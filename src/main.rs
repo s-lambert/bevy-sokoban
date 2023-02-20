@@ -19,6 +19,7 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let floor_texture: Handle<Image> = asset_server.load("floor.png");
     let wall_texture: Handle<Image> = asset_server.load("wall.png");
+    let goal_texture: Handle<Image> = asset_server.load("goal.png");
     let block_texture: Handle<Image> = asset_server.load("block.png");
     let player_texture: Handle<Image> = asset_server.load("player.png");
 
@@ -43,6 +44,13 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 2 => {
                     commands.spawn(SpriteBundle {
                         texture: block_texture.clone(),
+                        transform: Transform::from_translation(position.extend(1.0)),
+                        ..default()
+                    });
+                }
+                4 => {
+                    commands.spawn(SpriteBundle {
+                        texture: goal_texture.clone(),
                         transform: Transform::from_translation(position.extend(1.0)),
                         ..default()
                     });
