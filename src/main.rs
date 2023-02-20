@@ -18,6 +18,10 @@ fn level_one() -> Vec<Vec<i32>> {
     ]
 }
 
+fn position_to_translation(position: Vec2) -> Vec3 {
+    Vec3::new(position.x * TILE_SIZE, -position.y * TILE_SIZE, 1.0)
+}
+
 fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
 
@@ -44,14 +48,18 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
             match col {
                 1 => {
+                    let player_position = Vec2::new(col_index as f32, row_index as f32);
                     commands.spawn((
                         Player {
+                            position: Vec2::new(col_index as f32, row_index as f32),
                             is_moving: false,
                             move_timer: Timer::from_seconds(0.5, TimerMode::Once),
                         },
                         SpriteBundle {
                             texture: player_texture.clone(),
-                            transform: Transform::from_translation(position.extend(1.0)),
+                            transform: Transform::from_translation(position_to_translation(
+                                player_position,
+                            )),
                             ..default()
                         },
                     ));
