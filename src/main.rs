@@ -19,6 +19,8 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let floor_texture: Handle<Image> = asset_server.load("floor.png");
     let wall_texture: Handle<Image> = asset_server.load("wall.png");
+    let block_texture: Handle<Image> = asset_server.load("block.png");
+    let player_texture: Handle<Image> = asset_server.load("player.png");
 
     for (row_index, row) in level.iter().enumerate() {
         for (col_index, col) in row.iter().enumerate() {
@@ -31,6 +33,20 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             });
 
             match col {
+                1 => {
+                    commands.spawn(SpriteBundle {
+                        texture: player_texture.clone(),
+                        transform: Transform::from_translation(position.extend(1.0)),
+                        ..default()
+                    });
+                }
+                2 => {
+                    commands.spawn(SpriteBundle {
+                        texture: block_texture.clone(),
+                        transform: Transform::from_translation(position.extend(1.0)),
+                        ..default()
+                    });
+                }
                 8 => {
                     commands.spawn(SpriteBundle {
                         texture: wall_texture.clone(),
@@ -42,19 +58,6 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             }
         }
     }
-    commands.spawn(
-        (SpriteBundle {
-            texture: asset_server.load("player.png"),
-            ..default()
-        }),
-    );
-
-    commands.spawn(
-        (SpriteBundle {
-            texture: asset_server.load("block.png"),
-            ..default()
-        }),
-    );
 }
 
 fn main() {
