@@ -18,18 +18,28 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let level = level_one();
 
     let floor_texture: Handle<Image> = asset_server.load("floor.png");
+    let wall_texture: Handle<Image> = asset_server.load("wall.png");
 
     for (row_index, row) in level.iter().enumerate() {
         for (col_index, col) in row.iter().enumerate() {
+            let position = Vec2::new(col_index as f32 * TILE_SIZE, row_index as f32 * TILE_SIZE);
+
             commands.spawn(SpriteBundle {
                 texture: floor_texture.clone(),
-                transform: Transform::from_translation(Vec3::new(
-                    col_index as f32 * TILE_SIZE,
-                    row_index as f32 * TILE_SIZE,
-                    0.0,
-                )),
+                transform: Transform::from_translation(position.extend(0.0)),
                 ..default()
             });
+
+            match col {
+                8 => {
+                    commands.spawn(SpriteBundle {
+                        texture: wall_texture.clone(),
+                        transform: Transform::from_translation(position.extend(1.0)),
+                        ..default()
+                    });
+                }
+                0 | _ => {}
+            }
         }
     }
     commands.spawn(
@@ -42,13 +52,6 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(
         (SpriteBundle {
             texture: asset_server.load("block.png"),
-            ..default()
-        }),
-    );
-
-    commands.spawn(
-        (SpriteBundle {
-            texture: asset_server.load("wall.png"),
             ..default()
         }),
     );
