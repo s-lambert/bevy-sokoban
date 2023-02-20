@@ -2,6 +2,12 @@ use bevy::prelude::*;
 
 const TILE_SIZE: f32 = 16.0;
 
+#[derive(Component)]
+struct Player {
+    is_moving: bool,
+    move_timer: Timer,
+}
+
 fn level_one() -> Vec<Vec<i32>> {
     vec![
         vec![0, 0, 0, 0, 0, 0, 0],
@@ -38,11 +44,17 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
             match col {
                 1 => {
-                    commands.spawn(SpriteBundle {
-                        texture: player_texture.clone(),
-                        transform: Transform::from_translation(position.extend(1.0)),
-                        ..default()
-                    });
+                    commands.spawn((
+                        Player {
+                            is_moving: false,
+                            move_timer: Timer::from_seconds(0.5, TimerMode::Once),
+                        },
+                        SpriteBundle {
+                            texture: player_texture.clone(),
+                            transform: Transform::from_translation(position.extend(1.0)),
+                            ..default()
+                        },
+                    ));
                 }
                 2 => {
                     commands.spawn(SpriteBundle {
@@ -71,6 +83,37 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     }
 }
 
+fn start_moving(keyboard_input: Res<Input<KeyCode>>, mut player_query: Query<&mut Player>) {
+    let Some(mut player) = player_query.iter_mut().next() else { return };
+    if player.is_moving {
+        return;
+    }
+
+    if keyboard_input.pressed(KeyCode::Up) {
+        player.is_moving = true;
+    } else if keyboard_input.pressed(KeyCode::Down) {
+        player.is_moving = true;
+    } else if keyboard_input.pressed(KeyCode::Left) {
+        player.is_moving = true;
+    } else if keyboard_input.pressed(KeyCode::Right) {
+        player.is_moving = true;
+    }
+}
+
+fn move_objects(time: Res<Time>, mut player_query: Query<&mut Player>) {
+    let Some(mut player) = player_query.iter_mut().next() else { return };
+    if !player.is_moving {
+        return;
+    }
+
+    player.move_timer.tick(time.delta());
+    if player.move_timer.finished() {
+        player.move_timer.reset();
+        player.is_moving = false;
+        dbg!("Finished moving.");
+    }
+}
+
 fn main() {
     App::new()
         .add_plugins(
@@ -87,6 +130,8 @@ fn main() {
                 }),
         )
         .add_system(bevy::window::close_on_esc)
+        .add_system(start_moving)
+        .add_system(move_objects)
         .add_startup_system(level_setup)
         .run();
 }
