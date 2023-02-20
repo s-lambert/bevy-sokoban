@@ -25,7 +25,10 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     for (row_index, row) in level.iter().enumerate() {
         for (col_index, col) in row.iter().enumerate() {
-            let position = Vec2::new(col_index as f32 * TILE_SIZE, row_index as f32 * TILE_SIZE);
+            let position = Vec2::new(
+                col_index as f32 * TILE_SIZE,
+                -(row_index as f32 * TILE_SIZE),
+            );
 
             commands.spawn(SpriteBundle {
                 texture: floor_texture.clone(),
