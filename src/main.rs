@@ -6,6 +6,13 @@ const TILE_SIZE: f32 = 16.0;
 struct Player {
     is_moving: bool,
     move_timer: Timer,
+    position: Vec2,
+}
+
+#[derive(Component)]
+struct Moving {
+    from: Vec2,
+    to: Vec2,
 }
 
 fn level_one() -> Vec<Vec<i32>> {
@@ -19,7 +26,7 @@ fn level_one() -> Vec<Vec<i32>> {
 }
 
 fn position_to_translation(position: Vec2) -> Vec3 {
-    Vec3::new(position.x * TILE_SIZE, -position.y * TILE_SIZE, 1.0)
+    Vec3::new(position.x * TILE_SIZE, -position.y * TILE_SIZE, 2.0)
 }
 
 fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -91,25 +98,45 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     }
 }
 
-fn start_moving(keyboard_input: Res<Input<KeyCode>>, mut player_query: Query<&mut Player>) {
-    let Some(mut player) = player_query.iter_mut().next() else { return };
+fn start_moving(
+    mut commands: Commands,
+    keyboard_input: Res<Input<KeyCode>>,
+    mut player_query: Query<(Entity, &mut Player)>,
+) {
+    let Some((player_entity, mut player)) = player_query.iter_mut().next() else { return };
     if player.is_moving {
         return;
     }
 
     if keyboard_input.pressed(KeyCode::Up) {
         player.is_moving = true;
+        commands.entity(player_entity).insert(Moving {
+            from: player.position.clone(),
+            to: Vec2::new(player.position.x, player.position.y - 1.0),
+        });
     } else if keyboard_input.pressed(KeyCode::Down) {
         player.is_moving = true;
+        commands.entity(player_entity).insert(Moving {
+            from: player.position.clone(),
+            to: Vec2::new(player.position.x, player.position.y + 1.0),
+        });
     } else if keyboard_input.pressed(KeyCode::Left) {
         player.is_moving = true;
+        commands.entity(player_entity).insert(Moving {
+            from: player.position.clone(),
+            to: Vec2::new(player.position.x - 1.0, player.position.y),
+        });
     } else if keyboard_input.pressed(KeyCode::Right) {
         player.is_moving = true;
+        commands.entity(player_entity).insert(Moving {
+            from: player.position.clone(),
+            to: Vec2::new(player.position.x + 1.0, player.position.y),
+        });
     }
 }
 
-fn move_objects(time: Res<Time>, mut player_query: Query<&mut Player>) {
-    let Some(mut player) = player_query.iter_mut().next() else { return };
+fn move_objects(time: Res<Time>, mut player_query: Query<(&mut Player, &Moving, &mut Transform)>) {
+    let Some((mut player, moving, mut transform)) = player_query.iter_mut().next() else { return };
     if !player.is_moving {
         return;
     }
@@ -118,7 +145,8 @@ fn move_objects(time: Res<Time>, mut player_query: Query<&mut Player>) {
     if player.move_timer.finished() {
         player.move_timer.reset();
         player.is_moving = false;
-        dbg!("Finished moving.");
+        player.position = moving.to;
+        transform.translation = position_to_translation(moving.to);
     }
 }
 
