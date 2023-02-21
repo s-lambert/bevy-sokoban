@@ -135,8 +135,20 @@ fn start_moving(
     }
 }
 
-fn move_objects(time: Res<Time>, mut player_query: Query<(&mut Player, &Moving, &mut Transform)>) {
-    let Some((mut player, moving, mut transform)) = player_query.iter_mut().next() else { return };
+fn lerp(x: f32, y: f32, t: f32) -> f32 {
+    (1.0 - t) * x + t * y
+}
+
+fn lerpv(a: Vec2, b: Vec2, t: f32) -> Vec2 {
+    Vec2::new(lerp(a.x, b.x, t), lerp(a.y, b.y, t))
+}
+
+fn move_objects(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut player_query: Query<(Entity, &mut Player, &Moving, &mut Transform)>,
+) {
+    let Some((player_entity, mut player, moving, mut transform)) = player_query.iter_mut().next() else { return };
     if !player.is_moving {
         return;
     }
@@ -147,6 +159,10 @@ fn move_objects(time: Res<Time>, mut player_query: Query<(&mut Player, &Moving, 
         player.is_moving = false;
         player.position = moving.to;
         transform.translation = position_to_translation(moving.to);
+        commands.entity(player_entity).remove::<Moving>();
+    } else {
+        transform.translation =
+            position_to_translation(lerpv(moving.from, moving.to, player.move_timer.percent()));
     }
 }
 
