@@ -147,59 +147,31 @@ fn start_moving(
         return;
     }
 
+    let mut move_dir: Option<(i32, i32)> = None;
     if keyboard_input.pressed(KeyCode::Up) {
-        let move_to = Position {
-            x: player.position.x,
-            y: player.position.y - 1,
-        };
-        if obstacles.contains_key(&move_to) {
-            return;
-        }
-        player.is_moving = true;
-        commands.entity(player_entity).insert(Moving {
-            from: player.position.clone(),
-            to: move_to,
-        });
+        move_dir = Some((0, -1));
     } else if keyboard_input.pressed(KeyCode::Down) {
-        let move_to = Position {
-            x: player.position.x,
-            y: player.position.y + 1,
-        };
-        if obstacles.contains_key(&move_to) {
-            return;
-        }
-        player.is_moving = true;
-        commands.entity(player_entity).insert(Moving {
-            from: player.position.clone(),
-            to: move_to,
-        });
+        move_dir = Some((0, 1));
     } else if keyboard_input.pressed(KeyCode::Left) {
-        let move_to = Position {
-            x: player.position.x - 1,
-            y: player.position.y,
-        };
-        if obstacles.contains_key(&move_to) {
-            return;
-        }
-        player.is_moving = true;
-        commands.entity(player_entity).insert(Moving {
-            from: player.position.clone(),
-            to: move_to,
-        });
+        move_dir = Some((-1, 0));
     } else if keyboard_input.pressed(KeyCode::Right) {
-        let move_to = Position {
-            x: player.position.x + 1,
-            y: player.position.y,
-        };
-        if obstacles.contains_key(&move_to) {
-            return;
-        }
-        player.is_moving = true;
-        commands.entity(player_entity).insert(Moving {
-            from: player.position.clone(),
-            to: move_to,
-        });
+        move_dir = Some((1, 0));
     }
+
+    let Some(move_to) = move_dir.map(|(x, y)| Position {
+        x: player.position.x + x,
+        y: player.position.y + y,
+    }) else { return };
+
+    if obstacles.contains_key(&move_to) {
+        return;
+    }
+
+    player.is_moving = true;
+    commands.entity(player_entity).insert(Moving {
+        from: player.position.clone(),
+        to: move_to,
+    });
 }
 
 fn lerp(x: f32, y: f32, t: f32) -> f32 {
