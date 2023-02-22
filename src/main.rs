@@ -2,17 +2,23 @@ use bevy::prelude::*;
 
 const TILE_SIZE: f32 = 16.0;
 
+#[derive(Component, Copy, Clone)]
+struct Position {
+    x: i32,
+    y: i32,
+}
+
 #[derive(Component)]
 struct Player {
     is_moving: bool,
     move_timer: Timer,
-    position: Vec2,
+    position: Position,
 }
 
 #[derive(Component)]
 struct Moving {
-    from: Vec2,
-    to: Vec2,
+    from: Position,
+    to: Position,
 }
 
 fn level_one() -> Vec<Vec<i32>> {
@@ -25,8 +31,12 @@ fn level_one() -> Vec<Vec<i32>> {
     ]
 }
 
-fn position_to_translation(position: Vec2) -> Vec3 {
-    Vec3::new(position.x * TILE_SIZE, -position.y * TILE_SIZE, 2.0)
+fn position_to_translation(position: Position) -> Vec3 {
+    Vec3::new(
+        position.x as f32 * TILE_SIZE,
+        position.y as f32 * -TILE_SIZE,
+        2.0,
+    )
 }
 
 fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -55,10 +65,13 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
             match col {
                 1 => {
-                    let player_position = Vec2::new(col_index as f32, row_index as f32);
+                    let player_position = Position {
+                        x: col_index as i32,
+                        y: row_index as i32,
+                    };
                     commands.spawn((
                         Player {
-                            position: Vec2::new(col_index as f32, row_index as f32),
+                            position: player_position,
                             is_moving: false,
                             move_timer: Timer::from_seconds(0.5, TimerMode::Once),
                         },
@@ -112,25 +125,37 @@ fn start_moving(
         player.is_moving = true;
         commands.entity(player_entity).insert(Moving {
             from: player.position.clone(),
-            to: Vec2::new(player.position.x, player.position.y - 1.0),
+            to: Position {
+                x: player.position.x,
+                y: player.position.y - 1,
+            },
         });
     } else if keyboard_input.pressed(KeyCode::Down) {
         player.is_moving = true;
         commands.entity(player_entity).insert(Moving {
             from: player.position.clone(),
-            to: Vec2::new(player.position.x, player.position.y + 1.0),
+            to: Position {
+                x: player.position.x,
+                y: player.position.y + 1,
+            },
         });
     } else if keyboard_input.pressed(KeyCode::Left) {
         player.is_moving = true;
         commands.entity(player_entity).insert(Moving {
             from: player.position.clone(),
-            to: Vec2::new(player.position.x - 1.0, player.position.y),
+            to: Position {
+                x: player.position.x - 1,
+                y: player.position.y,
+            },
         });
     } else if keyboard_input.pressed(KeyCode::Right) {
         player.is_moving = true;
         commands.entity(player_entity).insert(Moving {
             from: player.position.clone(),
-            to: Vec2::new(player.position.x + 1.0, player.position.y),
+            to: Position {
+                x: player.position.x + 1,
+                y: player.position.y,
+            },
         });
     }
 }
@@ -139,8 +164,8 @@ fn lerp(x: f32, y: f32, t: f32) -> f32 {
     (1.0 - t) * x + t * y
 }
 
-fn lerpv(a: Vec2, b: Vec2, t: f32) -> Vec2 {
-    Vec2::new(lerp(a.x, b.x, t), lerp(a.y, b.y, t))
+fn lerpv(a: Vec3, b: Vec3, t: f32) -> Vec3 {
+    Vec3::new(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t))
 }
 
 fn move_objects(
@@ -161,8 +186,11 @@ fn move_objects(
         transform.translation = position_to_translation(moving.to);
         commands.entity(player_entity).remove::<Moving>();
     } else {
-        transform.translation =
-            position_to_translation(lerpv(moving.from, moving.to, player.move_timer.percent()));
+        transform.translation = lerpv(
+            position_to_translation(moving.from),
+            position_to_translation(moving.to),
+            player.move_timer.percent(),
+        );
     }
 }
 
