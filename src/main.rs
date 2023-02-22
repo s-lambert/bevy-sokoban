@@ -14,7 +14,7 @@ enum Obstacle {
 }
 
 #[derive(Resource, Deref, DerefMut)]
-struct Obstacles(HashMap<Position, Obstacle>);
+struct Obstacles(HashMap<Position, (Entity, Obstacle)>);
 
 #[derive(Component)]
 struct Player {
@@ -94,18 +94,20 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ));
                 }
                 2 => {
+                    let block_id = commands
+                        .spawn(SpriteBundle {
+                            texture: block_texture.clone(),
+                            transform: Transform::from_translation(position.extend(1.0)),
+                            ..default()
+                        })
+                        .id();
                     obstacles.insert(
                         Position {
                             x: col_index as i32,
                             y: row_index as i32,
                         },
-                        Obstacle::Block,
+                        (block_id, Obstacle::Block),
                     );
-                    commands.spawn(SpriteBundle {
-                        texture: block_texture.clone(),
-                        transform: Transform::from_translation(position.extend(1.0)),
-                        ..default()
-                    });
                 }
                 4 => {
                     commands.spawn(SpriteBundle {
@@ -115,18 +117,20 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     });
                 }
                 8 => {
+                    let wall_id = commands
+                        .spawn(SpriteBundle {
+                            texture: wall_texture.clone(),
+                            transform: Transform::from_translation(position.extend(1.0)),
+                            ..default()
+                        })
+                        .id();
                     obstacles.insert(
                         Position {
                             x: col_index as i32,
                             y: row_index as i32,
                         },
-                        Obstacle::Wall,
+                        (wall_id, Obstacle::Wall),
                     );
-                    commands.spawn(SpriteBundle {
-                        texture: wall_texture.clone(),
-                        transform: Transform::from_translation(position.extend(1.0)),
-                        ..default()
-                    });
                 }
                 0 | _ => {}
             }
@@ -147,24 +151,39 @@ fn start_moving(
         return;
     }
 
-    let mut move_dir: Option<(i32, i32)> = None;
+    let mut input: Option<(i32, i32)> = None;
     if keyboard_input.pressed(KeyCode::Up) {
-        move_dir = Some((0, -1));
+        input = Some((0, -1));
     } else if keyboard_input.pressed(KeyCode::Down) {
-        move_dir = Some((0, 1));
+        input = Some((0, 1));
     } else if keyboard_input.pressed(KeyCode::Left) {
-        move_dir = Some((-1, 0));
+        input = Some((-1, 0));
     } else if keyboard_input.pressed(KeyCode::Right) {
-        move_dir = Some((1, 0));
+        input = Some((1, 0));
     }
 
-    let Some(move_to) = move_dir.map(|(x, y)| Position {
-        x: player.position.x + x,
-        y: player.position.y + y,
-    }) else { return };
+    let Some(move_dir) = input else { return };
+    let move_to = Position {
+        x: player.position.x + move_dir.0,
+        y: player.position.y + move_dir.1,
+    };
 
-    if obstacles.contains_key(&move_to) {
-        return;
+    match obstacles.get(&move_to) {
+        Some((_, Obstacle::Wall)) => return,
+        Some((block_entity, Obstacle::Block)) => {
+            let block_move_to = Position {
+                x: move_to.x + move_dir.0,
+                y: move_to.y + move_dir.1,
+            };
+            if obstacles.contains_key(&block_move_to) {
+                return;
+            }
+            commands.entity(*block_entity).insert(Moving {
+                from: move_to.clone(),
+                to: block_move_to,
+            });
+        }
+        _ => {}
     }
 
     player.is_moving = true;
@@ -185,9 +204,11 @@ fn lerpv(a: Vec3, b: Vec3, t: f32) -> Vec3 {
 fn move_objects(
     time: Res<Time>,
     mut commands: Commands,
-    mut player_query: Query<(Entity, &mut Player, &Moving, &mut Transform)>,
+    mut obstacles: ResMut<Obstacles>,
+    mut player_query: Query<(Entity, &mut Player)>,
+    mut moving_query: Query<(Entity, &Moving, &mut Transform)>,
 ) {
-    let Some((player_entity, mut player, moving, mut transform)) = player_query.iter_mut().next() else { return };
+    let Some((player_entity, mut player)) = player_query.iter_mut().next() else { return };
     if !player.is_moving {
         return;
     }
@@ -196,15 +217,24 @@ fn move_objects(
     if player.move_timer.finished() {
         player.move_timer.reset();
         player.is_moving = false;
-        player.position = moving.to;
-        transform.translation = position_to_translation(moving.to);
-        commands.entity(player_entity).remove::<Moving>();
+        for (entity, moving, mut transform) in &mut moving_query {
+            transform.translation = position_to_translation(moving.to);
+            commands.entity(entity).remove::<Moving>();
+            if entity == player_entity {
+                player.position = moving.to;
+            }
+
+            let Some(obstacle) = obstacles.remove(&moving.from) else { continue };
+            obstacles.insert(moving.to, obstacle);
+        }
     } else {
-        transform.translation = lerpv(
-            position_to_translation(moving.from),
-            position_to_translation(moving.to),
-            player.move_timer.percent(),
-        );
+        for (_entity, moving, mut transform) in &mut moving_query {
+            transform.translation = lerpv(
+                position_to_translation(moving.from),
+                position_to_translation(moving.to),
+                player.move_timer.percent(),
+            );
+        }
     }
 }
 
