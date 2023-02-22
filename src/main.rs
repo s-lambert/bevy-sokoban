@@ -1,12 +1,20 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::HashMap};
 
 const TILE_SIZE: f32 = 16.0;
 
-#[derive(Component, Copy, Clone)]
+#[derive(Component, Copy, Clone, Eq, Hash, PartialEq)]
 struct Position {
     x: i32,
     y: i32,
 }
+
+enum Obstacle {
+    Block,
+    Wall,
+}
+
+#[derive(Resource, Deref, DerefMut)]
+struct Obstacles(HashMap<Position, Obstacle>);
 
 #[derive(Component)]
 struct Player {
@@ -43,6 +51,7 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
 
     let level = level_one();
+    let mut obstacles = Obstacles(HashMap::default());
 
     let floor_texture: Handle<Image> = asset_server.load("floor.png");
     let wall_texture: Handle<Image> = asset_server.load("wall.png");
@@ -73,7 +82,7 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Player {
                             position: player_position,
                             is_moving: false,
-                            move_timer: Timer::from_seconds(0.5, TimerMode::Once),
+                            move_timer: Timer::from_seconds(0.3, TimerMode::Once),
                         },
                         SpriteBundle {
                             texture: player_texture.clone(),
@@ -85,6 +94,13 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ));
                 }
                 2 => {
+                    obstacles.insert(
+                        Position {
+                            x: col_index as i32,
+                            y: row_index as i32,
+                        },
+                        Obstacle::Block,
+                    );
                     commands.spawn(SpriteBundle {
                         texture: block_texture.clone(),
                         transform: Transform::from_translation(position.extend(1.0)),
@@ -99,6 +115,13 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     });
                 }
                 8 => {
+                    obstacles.insert(
+                        Position {
+                            x: col_index as i32,
+                            y: row_index as i32,
+                        },
+                        Obstacle::Wall,
+                    );
                     commands.spawn(SpriteBundle {
                         texture: wall_texture.clone(),
                         transform: Transform::from_translation(position.extend(1.0)),
@@ -109,11 +132,14 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             }
         }
     }
+
+    commands.insert_resource(obstacles);
 }
 
 fn start_moving(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
+    obstacles: Res<Obstacles>,
     mut player_query: Query<(Entity, &mut Player)>,
 ) {
     let Some((player_entity, mut player)) = player_query.iter_mut().next() else { return };
@@ -122,40 +148,56 @@ fn start_moving(
     }
 
     if keyboard_input.pressed(KeyCode::Up) {
+        let move_to = Position {
+            x: player.position.x,
+            y: player.position.y - 1,
+        };
+        if obstacles.contains_key(&move_to) {
+            return;
+        }
         player.is_moving = true;
         commands.entity(player_entity).insert(Moving {
             from: player.position.clone(),
-            to: Position {
-                x: player.position.x,
-                y: player.position.y - 1,
-            },
+            to: move_to,
         });
     } else if keyboard_input.pressed(KeyCode::Down) {
+        let move_to = Position {
+            x: player.position.x,
+            y: player.position.y + 1,
+        };
+        if obstacles.contains_key(&move_to) {
+            return;
+        }
         player.is_moving = true;
         commands.entity(player_entity).insert(Moving {
             from: player.position.clone(),
-            to: Position {
-                x: player.position.x,
-                y: player.position.y + 1,
-            },
+            to: move_to,
         });
     } else if keyboard_input.pressed(KeyCode::Left) {
+        let move_to = Position {
+            x: player.position.x - 1,
+            y: player.position.y,
+        };
+        if obstacles.contains_key(&move_to) {
+            return;
+        }
         player.is_moving = true;
         commands.entity(player_entity).insert(Moving {
             from: player.position.clone(),
-            to: Position {
-                x: player.position.x - 1,
-                y: player.position.y,
-            },
+            to: move_to,
         });
     } else if keyboard_input.pressed(KeyCode::Right) {
+        let move_to = Position {
+            x: player.position.x + 1,
+            y: player.position.y,
+        };
+        if obstacles.contains_key(&move_to) {
+            return;
+        }
         player.is_moving = true;
         commands.entity(player_entity).insert(Moving {
             from: player.position.clone(),
-            to: Position {
-                x: player.position.x + 1,
-                y: player.position.y,
-            },
+            to: move_to,
         });
     }
 }
