@@ -16,6 +16,9 @@ enum Obstacle {
 #[derive(Resource, Deref, DerefMut)]
 struct Obstacles(HashMap<Position, (Entity, Obstacle)>);
 
+#[derive(Resource, Deref, DerefMut)]
+struct Goals(HashMap<Position, Entity>);
+
 #[derive(Component)]
 struct Player {
     is_moving: bool,
@@ -51,6 +54,7 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let level = level_one();
     let mut obstacles = Obstacles(HashMap::default());
+    let mut goals = Goals(HashMap::default());
 
     let floor_texture: Handle<Image> = asset_server.load("floor.png");
     let wall_texture: Handle<Image> = asset_server.load("wall.png");
@@ -109,11 +113,20 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     );
                 }
                 4 => {
-                    commands.spawn(SpriteBundle {
-                        texture: goal_texture.clone(),
-                        transform: Transform::from_translation(position.extend(1.0)),
-                        ..default()
-                    });
+                    let goal_id = commands
+                        .spawn(SpriteBundle {
+                            texture: goal_texture.clone(),
+                            transform: Transform::from_translation(position.extend(1.0)),
+                            ..default()
+                        })
+                        .id();
+                    goals.insert(
+                        Position {
+                            x: col_index as i32,
+                            y: row_index as i32,
+                        },
+                        goal_id,
+                    );
                 }
                 8 => {
                     let wall_id = commands
@@ -137,6 +150,7 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     }
 
     commands.insert_resource(obstacles);
+    commands.insert_resource(goals);
 }
 
 fn start_moving(
@@ -204,6 +218,7 @@ fn move_objects(
     time: Res<Time>,
     mut commands: Commands,
     mut obstacles: ResMut<Obstacles>,
+    goals: Res<Goals>,
     mut player_query: Query<(Entity, &mut Player)>,
     mut moving_query: Query<(Entity, &Moving, &mut Transform)>,
 ) {
@@ -211,6 +226,8 @@ fn move_objects(
     if !player.is_moving {
         return;
     }
+
+    dbg!(player.is_moving);
 
     player.move_timer.tick(time.delta());
     if player.move_timer.finished() {
@@ -234,6 +251,13 @@ fn move_objects(
                 player.move_timer.percent(),
             );
         }
+    }
+
+    let has_won = goals
+        .iter()
+        .all(|(goal_position, _)| obstacles.contains_key(goal_position));
+    if has_won {
+        println!("Level complete!");
     }
 }
 
