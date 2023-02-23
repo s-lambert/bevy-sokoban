@@ -206,12 +206,13 @@ fn start_moving(
     });
 }
 
-fn lerp(x: f32, y: f32, t: f32) -> f32 {
-    (1.0 - t) * x + t * y
+// Adapted from: https://github.com/godotengine/godot/blob/27b2260460ab478707d884a16429add5bb3375f1/scene/animation/easing_equations.h
+fn quad(x: f32, y: f32, d: f32) -> f32 {
+    (y - x) * d.powf(2.0) + x
 }
 
-fn lerpv(a: Vec3, b: Vec3, t: f32) -> Vec3 {
-    Vec3::new(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t))
+fn quadv(a: Vec3, b: Vec3, d: f32) -> Vec3 {
+    Vec3::new(quad(a.x, b.x, d), quad(a.y, b.y, d), quad(a.z, b.z, d))
 }
 
 fn move_objects(
@@ -226,8 +227,6 @@ fn move_objects(
     if !player.is_moving {
         return;
     }
-
-    dbg!(player.is_moving);
 
     player.move_timer.tick(time.delta());
     if player.move_timer.finished() {
@@ -245,7 +244,7 @@ fn move_objects(
         }
     } else {
         for (_entity, moving, mut transform) in &mut moving_query {
-            transform.translation = lerpv(
+            transform.translation = quadv(
                 position_to_translation(moving.from),
                 position_to_translation(moving.to),
                 player.move_timer.percent(),
