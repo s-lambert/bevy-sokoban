@@ -205,12 +205,16 @@ fn start_moving(
 }
 
 // Adapted from: https://github.com/godotengine/godot/blob/27b2260460ab478707d884a16429add5bb3375f1/scene/animation/easing_equations.h
-fn quad(x: f32, y: f32, d: f32) -> f32 {
-    (y - x) * d.powf(2.0) + x
+fn quad_ease_out(x: f32, y: f32, d: f32) -> f32 {
+    -(y - x) * d * (d - 2.0) + x
 }
 
-fn quadv(a: Vec3, b: Vec3, d: f32) -> Vec3 {
-    Vec3::new(quad(a.x, b.x, d), quad(a.y, b.y, d), quad(a.z, b.z, d))
+fn quad_ease_out_v(a: Vec3, b: Vec3, d: f32) -> Vec3 {
+    Vec3::new(
+        quad_ease_out(a.x, b.x, d),
+        quad_ease_out(a.y, b.y, d),
+        quad_ease_out(a.z, b.z, d),
+    )
 }
 
 fn move_objects(
@@ -242,7 +246,7 @@ fn move_objects(
         }
     } else {
         for (_entity, moving, mut transform) in &mut moving_query {
-            transform.translation = quadv(
+            transform.translation = quad_ease_out_v(
                 moving.from.to_translation(),
                 moving.to.to_translation(),
                 player.move_timer.percent(),
