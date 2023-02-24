@@ -8,6 +8,12 @@ struct Position {
     y: i32,
 }
 
+impl Position {
+    fn to_translation(self) -> Vec3 {
+        Vec3::new(self.x as f32 * TILE_SIZE, self.y as f32 * -TILE_SIZE, 2.0)
+    }
+}
+
 enum Obstacle {
     Block,
     Wall,
@@ -39,14 +45,6 @@ fn level_one() -> Vec<Vec<i32>> {
         vec![8, 8, 8, 0, 0, 8],
         vec![0, 0, 8, 8, 8, 8],
     ]
-}
-
-fn position_to_translation(position: Position) -> Vec3 {
-    Vec3::new(
-        position.x as f32 * TILE_SIZE,
-        position.y as f32 * -TILE_SIZE,
-        2.0,
-    )
 }
 
 fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -89,9 +87,9 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         },
                         SpriteBundle {
                             texture: player_texture.clone(),
-                            transform: Transform::from_translation(position_to_translation(
-                                player_position,
-                            )),
+                            transform: Transform::from_translation(
+                                player_position.to_translation(),
+                            ),
                             ..default()
                         },
                     ));
@@ -233,7 +231,7 @@ fn move_objects(
         player.move_timer.reset();
         player.is_moving = false;
         for (entity, moving, mut transform) in &mut moving_query {
-            transform.translation = position_to_translation(moving.to);
+            transform.translation = moving.to.to_translation();
             commands.entity(entity).remove::<Moving>();
             if entity == player_entity {
                 player.position = moving.to;
@@ -245,8 +243,8 @@ fn move_objects(
     } else {
         for (_entity, moving, mut transform) in &mut moving_query {
             transform.translation = quadv(
-                position_to_translation(moving.from),
-                position_to_translation(moving.to),
+                moving.from.to_translation(),
+                moving.to.to_translation(),
                 player.move_timer.percent(),
             );
         }
