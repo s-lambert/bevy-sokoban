@@ -19,11 +19,11 @@ enum Obstacle {
     Wall,
 }
 
-#[derive(Resource, Deref, DerefMut)]
-struct Obstacles(HashMap<Position, (Entity, Obstacle)>);
-
-#[derive(Resource, Deref, DerefMut)]
-struct Goals(HashMap<Position, Entity>);
+#[derive(Resource)]
+struct LevelState {
+    obstacles: HashMap<Position, (Entity, Obstacle)>,
+    goals: HashMap<Position, Entity>,
+}
 
 #[derive(Component)]
 struct Player {
@@ -51,8 +51,8 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
 
     let level = level_one();
-    let mut obstacles = Obstacles(HashMap::default());
-    let mut goals = Goals(HashMap::default());
+    let mut obstacles = HashMap::default();
+    let mut goals = HashMap::default();
 
     let floor_texture: Handle<Image> = asset_server.load("floor.png");
     let wall_texture: Handle<Image> = asset_server.load("wall.png");
@@ -147,14 +147,16 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         }
     }
 
-    commands.insert_resource(obstacles);
-    commands.insert_resource(goals);
+    commands.insert_resource(LevelState {
+        obstacles: obstacles,
+        goals: goals,
+    });
 }
 
 fn start_moving(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
-    obstacles: Res<Obstacles>,
+    level_state: Res<LevelState>,
     mut player_query: Query<(Entity, &mut Player)>,
 ) {
     let Some((player_entity, mut player)) = player_query.iter_mut().next() else { return };
@@ -179,14 +181,14 @@ fn start_moving(
         y: player.position.y + move_dir.1,
     };
 
-    match obstacles.get(&move_to) {
+    match level_state.obstacles.get(&move_to) {
         Some((_, Obstacle::Wall)) => return,
         Some((block_entity, Obstacle::Block)) => {
             let block_move_to = Position {
                 x: move_to.x + move_dir.0,
                 y: move_to.y + move_dir.1,
             };
-            if obstacles.contains_key(&block_move_to) {
+            if level_state.obstacles.contains_key(&block_move_to) {
                 return;
             }
             commands.entity(*block_entity).insert(Moving {
@@ -220,8 +222,7 @@ fn quad_ease_out_v(a: Vec3, b: Vec3, d: f32) -> Vec3 {
 fn move_objects(
     time: Res<Time>,
     mut commands: Commands,
-    mut obstacles: ResMut<Obstacles>,
-    goals: Res<Goals>,
+    mut level_state: ResMut<LevelState>,
     mut player_query: Query<(Entity, &mut Player)>,
     mut moving_query: Query<(Entity, &Moving, &mut Transform)>,
 ) {
@@ -241,8 +242,8 @@ fn move_objects(
                 player.position = moving.to;
             }
 
-            let Some(obstacle) = obstacles.remove(&moving.from) else { continue };
-            obstacles.insert(moving.to, obstacle);
+            let Some(obstacle) = level_state.obstacles.remove(&moving.from) else { continue };
+            level_state.obstacles.insert(moving.to, obstacle);
         }
     } else {
         for (_entity, moving, mut transform) in &mut moving_query {
@@ -254,9 +255,10 @@ fn move_objects(
         }
     }
 
-    let has_won = goals
+    let has_won = level_state
+        .goals
         .iter()
-        .all(|(goal_position, _)| obstacles.contains_key(goal_position));
+        .all(|(goal_position, _)| level_state.obstacles.contains_key(goal_position));
     if has_won {
         println!("Level complete!");
     }
