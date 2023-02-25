@@ -233,7 +233,15 @@ fn move_objects(
     }
 
     player.move_timer.tick(time.delta());
-    if player.move_timer.finished() {
+    if !player.move_timer.finished() {
+        for (_entity, moving, mut transform) in &mut moving_query {
+            transform.translation = quad_ease_out_v(
+                moving.from.to_translation(),
+                moving.to.to_translation(),
+                player.move_timer.percent(),
+            );
+        }
+    } else {
         player.move_timer.reset();
         player.is_moving = false;
         for (entity, moving, mut transform) in &mut moving_query {
@@ -246,22 +254,14 @@ fn move_objects(
             let Some(obstacle) = level_state.obstacles.remove(&moving.from) else { continue };
             level_state.obstacles.insert(moving.to, obstacle);
         }
-    } else {
-        for (_entity, moving, mut transform) in &mut moving_query {
-            transform.translation = quad_ease_out_v(
-                moving.from.to_translation(),
-                moving.to.to_translation(),
-                player.move_timer.percent(),
-            );
-        }
-    }
 
-    let has_won = level_state
-        .goals
-        .iter()
-        .all(|(goal_position, _)| level_state.obstacles.contains_key(goal_position));
-    if has_won {
-        println!("Level complete!");
+        let has_won = level_state
+            .goals
+            .iter()
+            .all(|(goal_position, _)| level_state.obstacles.contains_key(goal_position));
+        if has_won {
+            println!("Level complete!");
+        }
     }
 }
 
