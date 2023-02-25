@@ -14,17 +14,23 @@ impl Position {
     }
 }
 
+#[derive(Clone)]
 enum Obstacle {
     Block,
     Wall,
 }
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 struct LevelState {
     obstacles: HashMap<Position, (Entity, Obstacle)>,
     goals: HashMap<Position, Entity>,
     player_position: Position,
 }
+
+#[derive(Resource, Deref, DerefMut)]
+struct UndoStack(Vec<LevelState>);
+
+struct UndoEvent;
 
 #[derive(Component)]
 struct Player {
@@ -152,11 +158,13 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         goals: goals,
         player_position: player_position.unwrap(),
     });
+    commands.insert_resource(UndoStack(Vec::default()));
 }
 
-fn start_moving(
+fn handle_input(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
+    mut undo_writer: EventWriter<UndoEvent>,
     level_state: Res<LevelState>,
     mut player_query: Query<(Entity, &mut Player)>,
 ) {
@@ -165,18 +173,23 @@ fn start_moving(
         return;
     }
 
-    let mut input: Option<(i32, i32)> = None;
-    if keyboard_input.pressed(KeyCode::Up) {
-        input = Some((0, -1));
-    } else if keyboard_input.pressed(KeyCode::Down) {
-        input = Some((0, 1));
-    } else if keyboard_input.pressed(KeyCode::Left) {
-        input = Some((-1, 0));
-    } else if keyboard_input.pressed(KeyCode::Right) {
-        input = Some((1, 0));
+    if keyboard_input.just_pressed(KeyCode::U) {
+        undo_writer.send(UndoEvent);
+        return;
     }
 
-    let Some(move_dir) = input else { return };
+    let mut movement: Option<(i32, i32)> = None;
+    if keyboard_input.pressed(KeyCode::Up) {
+        movement = Some((0, -1));
+    } else if keyboard_input.pressed(KeyCode::Down) {
+        movement = Some((0, 1));
+    } else if keyboard_input.pressed(KeyCode::Left) {
+        movement = Some((-1, 0));
+    } else if keyboard_input.pressed(KeyCode::Right) {
+        movement = Some((1, 0));
+    }
+
+    let Some(move_dir) = movement else { return };
     let move_to = Position {
         x: level_state.player_position.x + move_dir.0,
         y: level_state.player_position.y + move_dir.1,
@@ -207,6 +220,29 @@ fn start_moving(
     });
 }
 
+fn reset_state(
+    mut level_state: ResMut<LevelState>,
+    mut undo_stack: ResMut<UndoStack>,
+    mut undo_reader: EventReader<UndoEvent>,
+    player_query: Query<Entity, With<Player>>,
+    mut transform_query: Query<&mut Transform>,
+) {
+    if undo_reader.iter().next().is_some() {
+        let Some(previous_state) = undo_stack.pop() else { return };
+        *level_state = previous_state;
+
+        let Some(player_entity) = player_query.iter().next() else { return };
+        let Ok(mut player_transform) = transform_query.get_mut(player_entity) else { return };
+        player_transform.translation = level_state.player_position.to_translation();
+
+        for (position, (obstacle_entity, obstacle)) in level_state.obstacles.iter() {
+            let Obstacle::Block = obstacle else { continue };
+            let Ok(mut block_transform) = transform_query.get_mut(*obstacle_entity) else { continue };
+            block_transform.translation = position.to_translation();
+        }
+    }
+}
+
 // Adapted from: https://github.com/godotengine/godot/blob/27b2260460ab478707d884a16429add5bb3375f1/scene/animation/easing_equations.h
 fn quad_ease_out(x: f32, y: f32, d: f32) -> f32 {
     -(y - x) * d * (d - 2.0) + x
@@ -224,6 +260,7 @@ fn move_objects(
     time: Res<Time>,
     mut commands: Commands,
     mut level_state: ResMut<LevelState>,
+    mut undo_stack: ResMut<UndoStack>,
     mut player_query: Query<(Entity, &mut Player)>,
     mut moving_query: Query<(Entity, &Moving, &mut Transform)>,
 ) {
@@ -244,6 +281,7 @@ fn move_objects(
     } else {
         player.move_timer.reset();
         player.is_moving = false;
+        undo_stack.push(level_state.clone());
         for (entity, moving, mut transform) in &mut moving_query {
             transform.translation = moving.to.to_translation();
             commands.entity(entity).remove::<Moving>();
@@ -281,8 +319,10 @@ fn main() {
                 }),
         )
         .add_system(bevy::window::close_on_esc)
-        .add_system(start_moving)
-        .add_system(move_objects)
+        .add_event::<UndoEvent>()
         .add_startup_system(level_setup)
+        .add_system(handle_input)
+        .add_system(reset_state.after(handle_input))
+        .add_system(move_objects.after(handle_input))
         .run();
 }
