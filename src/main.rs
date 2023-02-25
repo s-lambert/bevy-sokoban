@@ -23,13 +23,13 @@ enum Obstacle {
 struct LevelState {
     obstacles: HashMap<Position, (Entity, Obstacle)>,
     goals: HashMap<Position, Entity>,
+    player_position: Position,
 }
 
 #[derive(Component)]
 struct Player {
     is_moving: bool,
     move_timer: Timer,
-    position: Position,
 }
 
 #[derive(Component)]
@@ -53,6 +53,7 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let level = level_one();
     let mut obstacles = HashMap::default();
     let mut goals = HashMap::default();
+    let mut player_position = None;
 
     let floor_texture: Handle<Image> = asset_server.load("floor.png");
     let wall_texture: Handle<Image> = asset_server.load("wall.png");
@@ -75,20 +76,19 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
             match col {
                 1 => {
-                    let player_position = Position {
+                    player_position = Some(Position {
                         x: col_index as i32,
                         y: row_index as i32,
-                    };
+                    });
                     commands.spawn((
                         Player {
-                            position: player_position,
                             is_moving: false,
                             move_timer: Timer::from_seconds(0.3, TimerMode::Once),
                         },
                         SpriteBundle {
                             texture: player_texture.clone(),
                             transform: Transform::from_translation(
-                                player_position.to_translation(),
+                                player_position.unwrap().to_translation(),
                             ),
                             ..default()
                         },
@@ -150,6 +150,7 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(LevelState {
         obstacles: obstacles,
         goals: goals,
+        player_position: player_position.unwrap(),
     });
 }
 
@@ -177,8 +178,8 @@ fn start_moving(
 
     let Some(move_dir) = input else { return };
     let move_to = Position {
-        x: player.position.x + move_dir.0,
-        y: player.position.y + move_dir.1,
+        x: level_state.player_position.x + move_dir.0,
+        y: level_state.player_position.y + move_dir.1,
     };
 
     match level_state.obstacles.get(&move_to) {
@@ -201,7 +202,7 @@ fn start_moving(
 
     player.is_moving = true;
     commands.entity(player_entity).insert(Moving {
-        from: player.position.clone(),
+        from: level_state.player_position.clone(),
         to: move_to,
     });
 }
@@ -239,7 +240,7 @@ fn move_objects(
             transform.translation = moving.to.to_translation();
             commands.entity(entity).remove::<Moving>();
             if entity == player_entity {
-                player.position = moving.to;
+                level_state.player_position = moving.to;
             }
 
             let Some(obstacle) = level_state.obstacles.remove(&moving.from) else { continue };
