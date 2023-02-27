@@ -32,6 +32,8 @@ struct UndoStack(Vec<LevelState>);
 
 struct UndoEvent;
 
+struct NextLevelEvent(i32);
+
 #[derive(Component)]
 struct Player {
     is_moving: bool,
@@ -53,10 +55,19 @@ fn level_one() -> Vec<Vec<i32>> {
     ]
 }
 
-fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn level_two() -> Vec<Vec<i32>> {
+    vec![
+        vec![8, 8, 8, 0, 8, 8, 8, 8],
+        vec![8, 4, 8, 8, 8, 2, 1, 8],
+        vec![8, 2, 0, 0, 0, 0, 2, 8],
+        vec![8, 0, 0, 0, 2, 0, 0, 8],
+        vec![8, 8, 8, 8, 8, 8, 8, 8],
+    ]
+}
+
+fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>, level: Vec<Vec<i32>>) {
     commands.spawn(Camera2dBundle::default());
 
-    let level = level_one();
     let mut obstacles = HashMap::default();
     let mut goals = HashMap::default();
     let mut player_position = None;
@@ -161,6 +172,12 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(UndoStack(Vec::default()));
 }
 
+fn setup_level_one(commands: Commands, asset_server: Res<AssetServer>) {
+    let level = level_one();
+
+    level_setup(commands, asset_server, level);
+}
+
 fn handle_input(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
@@ -263,6 +280,7 @@ fn move_objects(
     mut undo_stack: ResMut<UndoStack>,
     mut player_query: Query<(Entity, &mut Player)>,
     mut moving_query: Query<(Entity, &Moving, &mut Transform)>,
+    mut next_level_writer: EventWriter<NextLevelEvent>,
 ) {
     let Some((player_entity, mut player)) = player_query.iter_mut().next() else { return };
     if !player.is_moving {
@@ -298,8 +316,24 @@ fn move_objects(
             .iter()
             .all(|(goal_position, _)| level_state.obstacles.contains_key(goal_position));
         if has_won {
-            println!("Level complete!");
+            next_level_writer.send(NextLevelEvent(2));
         }
+    }
+}
+
+fn load_next_level(
+    mut commands: Commands,
+    everything_query: Query<Entity>,
+    asset_server: Res<AssetServer>,
+    mut next_level_reader: EventReader<NextLevelEvent>,
+) {
+    if next_level_reader.iter().next().is_some() {
+        for entity in everything_query.iter() {
+            commands.entity(entity).despawn();
+        }
+
+        let next_level = level_two();
+        level_setup(commands, asset_server, next_level);
     }
 }
 
@@ -320,9 +354,11 @@ fn main() {
         )
         .add_system(bevy::window::close_on_esc)
         .add_event::<UndoEvent>()
-        .add_startup_system(level_setup)
+        .add_event::<NextLevelEvent>()
+        .add_startup_system(setup_level_one)
         .add_system(handle_input)
         .add_system(reset_state.after(handle_input))
         .add_system(move_objects.after(handle_input))
+        .add_system(load_next_level.after(move_objects))
         .run();
 }
