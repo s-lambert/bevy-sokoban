@@ -22,6 +22,7 @@ enum Obstacle {
 
 #[derive(Resource, Clone)]
 struct LevelState {
+    current_level: i32,
     obstacles: HashMap<Position, (Entity, Obstacle)>,
     goals: HashMap<Position, Entity>,
     player_position: Position,
@@ -65,7 +66,25 @@ fn level_two() -> Vec<Vec<i32>> {
     ]
 }
 
-fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>, level: Vec<Vec<i32>>) {
+fn level_three() -> Vec<Vec<i32>> {
+    vec![
+        vec![0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0],
+        vec![8, 8, 0, 0, 0, 0, 0, 0, 0, 8, 8],
+        vec![8, 4, 2, 2, 0, 0, 2, 0, 2, 1, 8],
+        vec![8, 2, 2, 0, 0, 0, 2, 2, 2, 2, 8],
+        vec![8, 0, 0, 0, 0, 0, 0, 0, 2, 2, 8],
+        vec![8, 2, 0, 0, 0, 0, 0, 0, 0, 0, 8],
+        vec![8, 8, 0, 0, 0, 0, 0, 0, 0, 8, 8],
+        vec![0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0],
+    ]
+}
+
+fn level_setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    level: i32,
+    level_layout: Vec<Vec<i32>>,
+) {
     commands.spawn(Camera2dBundle::default());
 
     let mut obstacles = HashMap::default();
@@ -78,7 +97,7 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>, level: Ve
     let block_texture: Handle<Image> = asset_server.load("block.png");
     let player_texture: Handle<Image> = asset_server.load("player.png");
 
-    for (row_index, row) in level.iter().enumerate() {
+    for (row_index, row) in level_layout.iter().enumerate() {
         for (col_index, col) in row.iter().enumerate() {
             let position = Vec2::new(
                 col_index as f32 * TILE_SIZE,
@@ -165,6 +184,7 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>, level: Ve
     }
 
     commands.insert_resource(LevelState {
+        current_level: level,
         obstacles: obstacles,
         goals: goals,
         player_position: player_position.unwrap(),
@@ -175,7 +195,7 @@ fn level_setup(mut commands: Commands, asset_server: Res<AssetServer>, level: Ve
 fn setup_level_one(commands: Commands, asset_server: Res<AssetServer>) {
     let level = level_one();
 
-    level_setup(commands, asset_server, level);
+    level_setup(commands, asset_server, 1, level);
 }
 
 fn handle_input(
@@ -316,7 +336,7 @@ fn move_objects(
             .iter()
             .all(|(goal_position, _)| level_state.obstacles.contains_key(goal_position));
         if has_won {
-            next_level_writer.send(NextLevelEvent(2));
+            next_level_writer.send(NextLevelEvent(level_state.current_level + 1));
         }
     }
 }
@@ -327,14 +347,17 @@ fn load_next_level(
     asset_server: Res<AssetServer>,
     mut next_level_reader: EventReader<NextLevelEvent>,
 ) {
-    if next_level_reader.iter().next().is_some() {
-        for entity in everything_query.iter() {
-            commands.entity(entity).despawn();
-        }
-
-        let next_level = level_two();
-        level_setup(commands, asset_server, next_level);
+    let Some(next_level) = next_level_reader.iter().next() else { return };
+    for entity in everything_query.iter() {
+        commands.entity(entity).despawn();
     }
+
+    let next_level_layout = match next_level.0 {
+        2 => level_two(),
+        3 => level_three(),
+        _ => panic!("Level not found"),
+    };
+    level_setup(commands, asset_server, next_level.0, next_level_layout);
 }
 
 fn main() {
