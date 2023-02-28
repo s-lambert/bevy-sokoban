@@ -2,7 +2,9 @@ use bevy::{prelude::*, utils::HashMap};
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum GameState {
+    Startup,
     Playing,
+    Paused,
 }
 
 const TILE_SIZE: f32 = 16.0;
@@ -365,6 +367,31 @@ fn load_next_level(
     level_setup(commands, asset_server, next_level.0, next_level_layout);
 }
 
+fn start_playing(mut game_state: ResMut<State<GameState>>) {
+    game_state.replace(GameState::Playing).ok();
+}
+
+fn pause_game(
+    mut keyboard_input: ResMut<Input<KeyCode>>,
+    mut game_state: ResMut<State<GameState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        keyboard_input.reset(KeyCode::Space);
+        game_state.replace(GameState::Paused).ok();
+        return;
+    }
+}
+
+fn unpause_game(
+    mut keyboard_input: ResMut<Input<KeyCode>>,
+    mut game_state: ResMut<State<GameState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        keyboard_input.reset(KeyCode::Space);
+        game_state.replace(GameState::Playing).ok();
+    }
+}
+
 fn main() {
     App::new()
         .add_plugins(
@@ -381,16 +408,19 @@ fn main() {
                 }),
         )
         .add_system(bevy::window::close_on_esc)
-        .add_state(GameState::Playing)
+        .add_state(GameState::Startup)
         .add_event::<UndoEvent>()
         .add_event::<NextLevelEvent>()
-        .add_system_set(SystemSet::on_enter(GameState::Playing).with_system(setup_level_one))
+        .add_system_set(SystemSet::on_enter(GameState::Startup).with_system(setup_level_one))
+        .add_system_set(SystemSet::on_update(GameState::Startup).with_system(start_playing))
         .add_system_set(
             SystemSet::on_update(GameState::Playing)
-                .with_system(handle_input)
+                .with_system(pause_game)
+                .with_system(handle_input.after(pause_game))
                 .with_system(reset_state.after(handle_input))
                 .with_system(move_objects.after(handle_input))
                 .with_system(load_next_level.after(move_objects)),
         )
+        .add_system_set(SystemSet::on_update(GameState::Paused).with_system(unpause_game))
         .run();
 }
