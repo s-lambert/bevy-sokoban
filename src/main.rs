@@ -1,5 +1,10 @@
 use bevy::{prelude::*, utils::HashMap};
 
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+pub enum GameState {
+    Playing,
+}
+
 const TILE_SIZE: f32 = 16.0;
 
 #[derive(Component, Copy, Clone, Eq, Hash, PartialEq)]
@@ -376,12 +381,16 @@ fn main() {
                 }),
         )
         .add_system(bevy::window::close_on_esc)
+        .add_state(GameState::Playing)
         .add_event::<UndoEvent>()
         .add_event::<NextLevelEvent>()
-        .add_startup_system(setup_level_one)
-        .add_system(handle_input)
-        .add_system(reset_state.after(handle_input))
-        .add_system(move_objects.after(handle_input))
-        .add_system(load_next_level.after(move_objects))
+        .add_system_set(SystemSet::on_enter(GameState::Playing).with_system(setup_level_one))
+        .add_system_set(
+            SystemSet::on_update(GameState::Playing)
+                .with_system(handle_input)
+                .with_system(reset_state.after(handle_input))
+                .with_system(move_objects.after(handle_input))
+                .with_system(load_next_level.after(move_objects)),
+        )
         .run();
 }
