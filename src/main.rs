@@ -1,4 +1,4 @@
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{prelude::*, sprite::Anchor, utils::HashMap};
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum GameState {
@@ -92,7 +92,18 @@ fn level_setup(
     level: i32,
     level_layout: Vec<Vec<i32>>,
 ) {
-    commands.spawn(Camera2dBundle::default());
+    let last_row_index = level_layout.len() as i32;
+    let last_col_index = level_layout.first().unwrap().len() as i32;
+    let camera_position = Vec3::new(
+        last_col_index as f32 * TILE_SIZE / 2.0,
+        -(last_row_index as f32 * TILE_SIZE) / 2.0,
+        1000.0,
+    );
+
+    commands.spawn(Camera2dBundle {
+        transform: Transform::from_translation(camera_position),
+        ..default()
+    });
 
     let mut obstacles = HashMap::default();
     let mut goals = HashMap::default();
@@ -112,6 +123,10 @@ fn level_setup(
             );
 
             commands.spawn(SpriteBundle {
+                sprite: Sprite {
+                    anchor: Anchor::TopLeft,
+                    ..default()
+                },
                 texture: floor_texture.clone(),
                 transform: Transform::from_translation(position.extend(0.0)),
                 ..default()
@@ -129,6 +144,10 @@ fn level_setup(
                             move_timer: Timer::from_seconds(0.3, TimerMode::Once),
                         },
                         SpriteBundle {
+                            sprite: Sprite {
+                                anchor: Anchor::TopLeft,
+                                ..default()
+                            },
                             texture: player_texture.clone(),
                             transform: Transform::from_translation(
                                 player_position.unwrap().to_translation(),
@@ -140,6 +159,10 @@ fn level_setup(
                 2 => {
                     let block_id = commands
                         .spawn(SpriteBundle {
+                            sprite: Sprite {
+                                anchor: Anchor::TopLeft,
+                                ..default()
+                            },
                             texture: block_texture.clone(),
                             transform: Transform::from_translation(position.extend(1.0)),
                             ..default()
@@ -156,6 +179,10 @@ fn level_setup(
                 4 => {
                     let goal_id = commands
                         .spawn(SpriteBundle {
+                            sprite: Sprite {
+                                anchor: Anchor::TopLeft,
+                                ..default()
+                            },
                             texture: goal_texture.clone(),
                             transform: Transform::from_translation(position.extend(1.0)),
                             ..default()
@@ -172,6 +199,10 @@ fn level_setup(
                 8 => {
                     let wall_id = commands
                         .spawn(SpriteBundle {
+                            sprite: Sprite {
+                                anchor: Anchor::TopLeft,
+                                ..default()
+                            },
                             texture: wall_texture.clone(),
                             transform: Transform::from_translation(position.extend(1.0)),
                             ..default()
@@ -407,7 +438,6 @@ fn main() {
                     ..default()
                 }),
         )
-        .insert_resource(Msaa { samples: 1 })
         .add_system(bevy::window::close_on_esc)
         .add_state(GameState::Startup)
         .add_event::<UndoEvent>()
