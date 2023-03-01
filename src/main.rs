@@ -101,7 +101,11 @@ fn level_setup(
     );
 
     commands.spawn(Camera2dBundle {
-        transform: Transform::from_translation(camera_position),
+        transform: Transform {
+            translation: camera_position,
+            scale: Vec3::new(0.5, 0.5, 1.0),
+            ..default()
+        },
         ..default()
     });
 
