@@ -407,6 +407,7 @@ fn main() {
                     ..default()
                 }),
         )
+        .insert_resource(Msaa { samples: 1 })
         .add_system(bevy::window::close_on_esc)
         .add_state(GameState::Startup)
         .add_event::<UndoEvent>()
