@@ -1,4 +1,8 @@
-use bevy::{prelude::*, sprite::Anchor, utils::HashMap};
+use bevy::{
+    prelude::*,
+    sprite::Anchor,
+    utils::{HashMap, HashSet},
+};
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum GameState {
@@ -28,7 +32,7 @@ impl Position {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 enum Obstacle {
     Block,
     Wall,
@@ -93,6 +97,45 @@ fn level_three() -> Vec<Vec<i32>> {
     ]
 }
 
+fn get_floor_positions(
+    player_position: Position,
+    obstacles: HashMap<Position, (Entity, Obstacle)>,
+) -> Vec<Position> {
+    fn is_not_wall(obstacle: Option<(Entity, Obstacle)>) -> bool {
+        obstacle.is_none() || obstacle.unwrap().1 == Obstacle::Block
+    }
+
+    let mut visited = HashSet::default();
+    let mut to_visit = vec![player_position];
+
+    while !to_visit.is_empty() {
+        let current_position = to_visit.pop().unwrap();
+        if visited.contains(&current_position) {
+            continue;
+        }
+        visited.insert(current_position);
+
+        let up_position = current_position.add(0, 1);
+        if is_not_wall(obstacles.get(&up_position).cloned()) {
+            to_visit.push(up_position);
+        }
+        let down_position = current_position.add(0, -1);
+        if is_not_wall(obstacles.get(&down_position).cloned()) {
+            to_visit.push(down_position);
+        }
+        let right_position = current_position.add(1, 0);
+        if is_not_wall(obstacles.get(&right_position).cloned()) {
+            to_visit.push(right_position);
+        }
+        let left_position = current_position.add(-1, 0);
+        if is_not_wall(obstacles.get(&left_position).cloned()) {
+            to_visit.push(left_position);
+        }
+    }
+
+    visited.into_iter().collect()
+}
+
 fn level_setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -128,21 +171,6 @@ fn level_setup(
 
     for (row_index, row) in level_layout.iter().enumerate() {
         for (col_index, col) in row.iter().enumerate() {
-            let position = Vec2::new(
-                col_index as f32 * TILE_SIZE,
-                -(row_index as f32 * TILE_SIZE),
-            );
-
-            commands.spawn(SpriteBundle {
-                sprite: Sprite {
-                    anchor: Anchor::TopLeft,
-                    ..default()
-                },
-                texture: floor_texture.clone(),
-                transform: Transform::from_translation(position.extend(0.0)),
-                ..default()
-            });
-
             match col {
                 1 => {
                     player_position = Some(Position {
@@ -168,6 +196,11 @@ fn level_setup(
                     ));
                 }
                 2 => {
+                    let position = Position {
+                        x: col_index as i32,
+                        y: row_index as i32,
+                    };
+
                     let block_id = commands
                         .spawn(SpriteBundle {
                             sprite: Sprite {
@@ -175,7 +208,7 @@ fn level_setup(
                                 ..default()
                             },
                             texture: block_texture.clone(),
-                            transform: Transform::from_translation(position.extend(1.0)),
+                            transform: Transform::from_translation(position.to_translation()),
                             ..default()
                         })
                         .id();
@@ -188,6 +221,11 @@ fn level_setup(
                     );
                 }
                 4 => {
+                    let position = Position {
+                        x: col_index as i32,
+                        y: row_index as i32,
+                    };
+
                     let goal_id = commands
                         .spawn(SpriteBundle {
                             sprite: Sprite {
@@ -195,19 +233,18 @@ fn level_setup(
                                 ..default()
                             },
                             texture: goal_texture.clone(),
-                            transform: Transform::from_translation(position.extend(1.0)),
+                            transform: Transform::from_translation(position.to_translation()),
                             ..default()
                         })
                         .id();
-                    goals.insert(
-                        Position {
-                            x: col_index as i32,
-                            y: row_index as i32,
-                        },
-                        goal_id,
-                    );
+                    goals.insert(position, goal_id);
                 }
                 8 => {
+                    let position = Position {
+                        x: col_index as i32,
+                        y: row_index as i32,
+                    };
+
                     let wall_id = commands
                         .spawn(SpriteBundle {
                             sprite: Sprite {
@@ -215,21 +252,30 @@ fn level_setup(
                                 ..default()
                             },
                             texture: wall_texture.clone(),
-                            transform: Transform::from_translation(position.extend(1.0)),
+                            transform: Transform::from_translation(position.to_translation()),
                             ..default()
                         })
                         .id();
-                    obstacles.insert(
-                        Position {
-                            x: col_index as i32,
-                            y: row_index as i32,
-                        },
-                        (wall_id, Obstacle::Wall),
-                    );
+                    obstacles.insert(position, (wall_id, Obstacle::Wall));
                 }
                 0 | _ => {}
             }
         }
+    }
+
+    for tile_position in get_floor_positions(player_position.unwrap(), obstacles.clone()) {
+        let mut translation = tile_position.to_translation();
+        translation.z = 0.0;
+
+        commands.spawn(SpriteBundle {
+            sprite: Sprite {
+                anchor: Anchor::TopLeft,
+                ..default()
+            },
+            texture: floor_texture.clone(),
+            transform: Transform::from_translation(translation),
+            ..default()
+        });
     }
 
     commands.insert_resource(LevelState {
