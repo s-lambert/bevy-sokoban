@@ -16,6 +16,13 @@ struct Position {
 }
 
 impl Position {
+    fn add(&self, x: i32, y: i32) -> Position {
+        Position {
+            x: self.x + x,
+            y: self.y + y,
+        }
+    }
+
     fn to_translation(self) -> Vec3 {
         Vec3::new(self.x as f32 * TILE_SIZE, self.y as f32 * -TILE_SIZE, 2.0)
     }
@@ -268,19 +275,13 @@ fn handle_input(
         movement = Some((1, 0));
     }
 
-    let Some(move_dir) = movement else { return };
-    let move_to = Position {
-        x: level_state.player_position.x + move_dir.0,
-        y: level_state.player_position.y + move_dir.1,
-    };
+    let Some((move_x, move_y)) = movement else { return };
+    let move_to = level_state.player_position.add(move_x, move_y);
 
     match level_state.obstacles.get(&move_to) {
         Some((_, Obstacle::Wall)) => return,
         Some((block_entity, Obstacle::Block)) => {
-            let block_move_to = Position {
-                x: move_to.x + move_dir.0,
-                y: move_to.y + move_dir.1,
-            };
+            let block_move_to = move_to.add(move_x, move_y);
             if level_state.obstacles.contains_key(&block_move_to) {
                 return;
             }
