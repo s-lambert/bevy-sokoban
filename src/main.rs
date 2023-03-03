@@ -8,6 +8,7 @@ use bevy::{
 pub enum GameState {
     Startup,
     Playing,
+    Editing,
     Paused,
 }
 
@@ -461,6 +462,9 @@ fn pause_game(
         keyboard_input.reset(KeyCode::Space);
         game_state.replace(GameState::Paused).ok();
         return;
+    } else if keyboard_input.just_pressed(KeyCode::E) {
+        keyboard_input.reset(KeyCode::E);
+        game_state.replace(GameState::Editing).ok();
     }
 }
 
@@ -472,6 +476,39 @@ fn unpause_game(
         keyboard_input.reset(KeyCode::Space);
         game_state.replace(GameState::Playing).ok();
     }
+}
+
+fn remove_level(mut commands: Commands, everything_query: Query<Entity>) {
+    for entity in everything_query.iter() {
+        commands.entity(entity).despawn();
+    }
+}
+
+#[derive(Component)]
+struct Cursor;
+
+fn show_cursor(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let camera_position = Vec3::new(TILE_SIZE / 2.0, -(TILE_SIZE) / 2.0, 1000.0);
+    commands.spawn(Camera2dBundle {
+        transform: Transform {
+            translation: camera_position,
+            scale: Vec3::new(0.5, 0.5, 1.0),
+            ..default()
+        },
+        ..default()
+    });
+
+    commands.spawn((
+        Cursor,
+        SpriteBundle {
+            sprite: Sprite {
+                anchor: Anchor::TopLeft,
+                ..default()
+            },
+            texture: asset_server.load("cursor.png"),
+            ..default()
+        },
+    ));
 }
 
 fn main() {
@@ -502,6 +539,11 @@ fn main() {
                 .with_system(reset_state.after(handle_input))
                 .with_system(move_objects.after(handle_input))
                 .with_system(load_next_level.after(move_objects)),
+        )
+        .add_system_set(
+            SystemSet::on_enter(GameState::Editing)
+                .with_system(remove_level)
+                .with_system(show_cursor),
         )
         .add_system_set(SystemSet::on_update(GameState::Paused).with_system(unpause_game))
         .run();
