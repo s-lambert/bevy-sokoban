@@ -28,6 +28,13 @@ impl Position {
         }
     }
 
+    fn from_translation(translation: Vec3) -> Position {
+        Position {
+            x: (translation.x / TILE_SIZE) as i32,
+            y: (-translation.y / TILE_SIZE) as i32,
+        }
+    }
+
     fn to_translation(self) -> Vec3 {
         Vec3::new(self.x as f32 * TILE_SIZE, self.y as f32 * -TILE_SIZE, 2.0)
     }
@@ -485,7 +492,9 @@ fn remove_level(mut commands: Commands, everything_query: Query<Entity>) {
 }
 
 #[derive(Component)]
-struct Cursor;
+struct Cursor {
+    action_timer: Timer,
+}
 
 fn show_cursor(mut commands: Commands, asset_server: Res<AssetServer>) {
     let camera_position = Vec3::new(TILE_SIZE / 2.0, -(TILE_SIZE) / 2.0, 1000.0);
@@ -499,7 +508,9 @@ fn show_cursor(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 
     commands.spawn((
-        Cursor,
+        Cursor {
+            action_timer: Timer::from_seconds(0.2, TimerMode::Once),
+        },
         SpriteBundle {
             sprite: Sprite {
                 anchor: Anchor::TopLeft,
@@ -509,6 +520,37 @@ fn show_cursor(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         },
     ));
+}
+
+fn handle_edit_input(
+    time: Res<Time>,
+    keyboard_input: Res<Input<KeyCode>>,
+    mut cursor_query: Query<(&mut Cursor, &mut Transform)>,
+) {
+    let Some((mut cursor, mut transform)) = cursor_query.iter_mut().next() else { return };
+
+    if !cursor.action_timer.finished() {
+        cursor.action_timer.tick(time.delta());
+        return;
+    }
+
+    let mut movement: Option<(i32, i32)> = None;
+    if keyboard_input.pressed(KeyCode::Up) {
+        movement = Some((0, -1));
+    } else if keyboard_input.pressed(KeyCode::Down) {
+        movement = Some((0, 1));
+    } else if keyboard_input.pressed(KeyCode::Left) {
+        movement = Some((-1, 0));
+    } else if keyboard_input.pressed(KeyCode::Right) {
+        movement = Some((1, 0));
+    }
+
+    let Some((move_x, move_y)) = movement else { return };
+
+    transform.translation = Position::from_translation(transform.translation)
+        .add(move_x, move_y)
+        .to_translation();
+    cursor.action_timer.reset();
 }
 
 fn main() {
@@ -545,6 +587,7 @@ fn main() {
                 .with_system(remove_level)
                 .with_system(show_cursor),
         )
+        .add_system_set(SystemSet::on_update(GameState::Editing).with_system(handle_edit_input))
         .add_system_set(SystemSet::on_update(GameState::Paused).with_system(unpause_game))
         .run();
 }
