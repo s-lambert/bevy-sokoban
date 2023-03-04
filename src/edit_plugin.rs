@@ -86,12 +86,13 @@ fn handle_edit_input(
         movement = Some((1, 0));
     }
 
-    let cursor_position = Position::from_translation(transform.translation);
+    let mut cursor_position = Position::from_translation(transform.translation);
 
     if let Some((move_x, move_y)) = movement {
         cursor.action_timer.reset();
 
-        transform.translation = cursor_position.add(move_x, move_y).to_translation_z(2.0);
+        cursor_position = cursor_position.add(move_x, move_y);
+        transform.translation = cursor_position.to_translation_z(2.0);
     }
 
     if keyboard_input.pressed(KeyCode::Z) && !editing_state.floors.contains_key(&cursor_position) {
