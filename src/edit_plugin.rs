@@ -8,6 +8,7 @@ pub struct EditPlugin;
 struct EditingState {
     floors: HashMap<Position, Entity>,
     walls: HashMap<Position, Entity>,
+    blocks: HashMap<Position, Entity>,
 }
 
 #[derive(Component)]
@@ -143,6 +144,25 @@ fn handle_edit_input(
                 editing_state.walls.insert(wall_position, wall_id);
             }
         }
+    } else if keyboard_input.pressed(KeyCode::C)
+        && editing_state.floors.contains_key(&cursor_position)
+    {
+        cursor.action_timer.reset();
+
+        let block_translation = cursor_position.to_translation();
+
+        let block_id = commands
+            .spawn(SpriteBundle {
+                sprite: Sprite {
+                    anchor: Anchor::TopLeft,
+                    ..default()
+                },
+                texture: asset_server.load("block.png"),
+                transform: Transform::from_translation(block_translation),
+                ..default()
+            })
+            .id();
+        editing_state.blocks.insert(cursor_position, block_id);
     }
 }
 
