@@ -7,6 +7,7 @@ pub struct EditPlugin;
 #[derive(Resource, Default)]
 struct EditingState {
     floors: HashMap<Position, Entity>,
+    walls: HashMap<Position, Entity>,
 }
 
 #[derive(Component)]
@@ -84,12 +85,8 @@ fn handle_edit_input(
         transform.translation.z = 2.0;
     }
 
-    if keyboard_input.pressed(KeyCode::Z)
-        && !editing_state
-            .floors
-            .contains_key(&Position::from_translation(transform.translation))
-    {
-        dbg!("Added floor tile");
+    let cursor_position = Position::from_translation(transform.translation);
+    if keyboard_input.pressed(KeyCode::Z) && !editing_state.floors.contains_key(&cursor_position) {
         cursor.action_timer.reset();
 
         let mut floor_translation = transform.translation.clone();
@@ -110,6 +107,42 @@ fn handle_edit_input(
         editing_state
             .floors
             .insert(Position::from_translation(floor_translation), floor_entity);
+
+        if let Some(wall_entity) = editing_state.walls.get(&cursor_position) {
+            commands.entity(*wall_entity).despawn();
+            editing_state.walls.remove(&cursor_position);
+        }
+
+        let wall_combinations = vec![
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+        ];
+        for (relative_x, relative_y) in wall_combinations {
+            let wall_position = cursor_position.add(relative_x, relative_y);
+
+            if !editing_state.floors.contains_key(&wall_position)
+                && !editing_state.walls.contains_key(&wall_position)
+            {
+                let wall_id = commands
+                    .spawn(SpriteBundle {
+                        sprite: Sprite {
+                            anchor: Anchor::TopLeft,
+                            ..default()
+                        },
+                        texture: asset_server.load("wall.png"),
+                        transform: Transform::from_translation(wall_position.to_translation()),
+                        ..default()
+                    })
+                    .id();
+                editing_state.walls.insert(wall_position, wall_id);
+            }
+        }
     }
 }
 
