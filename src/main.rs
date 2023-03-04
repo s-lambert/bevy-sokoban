@@ -523,6 +523,8 @@ fn show_cursor(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn handle_edit_input(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
     time: Res<Time>,
     keyboard_input: Res<Input<KeyCode>>,
     mut cursor_query: Query<(&mut Cursor, &mut Transform)>,
@@ -545,12 +547,30 @@ fn handle_edit_input(
         movement = Some((1, 0));
     }
 
-    let Some((move_x, move_y)) = movement else { return };
+    if let Some((move_x, move_y)) = movement {
+        cursor.action_timer.reset();
 
-    transform.translation = Position::from_translation(transform.translation)
-        .add(move_x, move_y)
-        .to_translation();
-    cursor.action_timer.reset();
+        transform.translation = Position::from_translation(transform.translation)
+            .add(move_x, move_y)
+            .to_translation();
+    }
+
+    if keyboard_input.pressed(KeyCode::Z) {
+        cursor.action_timer.reset();
+
+        let mut tile_position = transform.translation.clone();
+        tile_position.z = 0.0;
+
+        commands.spawn(SpriteBundle {
+            sprite: Sprite {
+                anchor: Anchor::TopLeft,
+                ..default()
+            },
+            texture: asset_server.load("floor.png"),
+            transform: Transform::from_translation(tile_position),
+            ..default()
+        });
+    }
 }
 
 fn main() {
