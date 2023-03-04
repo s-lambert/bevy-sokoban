@@ -10,6 +10,7 @@ struct EditingState {
     walls: HashMap<Position, Entity>,
     blocks: HashMap<Position, Entity>,
     goals: HashMap<Position, Entity>,
+    player: Option<(Position, Entity)>,
 }
 
 impl EditingState {
@@ -17,6 +18,7 @@ impl EditingState {
         self.floors.contains_key(position)
             && !self.blocks.contains_key(position)
             && !self.goals.contains_key(position)
+            && (self.player.is_none() || &self.player.unwrap().0 != position)
     }
 }
 
@@ -184,6 +186,27 @@ fn handle_edit_input(
             })
             .id();
         editing_state.goals.insert(cursor_position, goal_id);
+    } else if keyboard_input.pressed(KeyCode::B) && editing_state.can_place(&cursor_position) {
+        cursor.action_timer.reset();
+
+        let player_translation = cursor_position.to_translation();
+
+        let player_id = commands
+            .spawn(SpriteBundle {
+                sprite: Sprite {
+                    anchor: Anchor::TopLeft,
+                    ..default()
+                },
+                texture: asset_server.load("player.png"),
+                transform: Transform::from_translation(player_translation),
+                ..default()
+            })
+            .id();
+
+        if editing_state.player.is_some() {
+            commands.entity(editing_state.player.unwrap().1).despawn();
+        }
+        editing_state.player = Some((cursor_position, player_id));
     }
 }
 
