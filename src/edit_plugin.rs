@@ -88,8 +88,7 @@ fn handle_edit_input(
     if let Some((move_x, move_y)) = movement {
         cursor.action_timer.reset();
 
-        transform.translation = cursor_position.add(move_x, move_y).to_translation();
-        transform.translation.z = 2.0;
+        transform.translation = cursor_position.add(move_x, move_y).to_translation_z(2.0);
     }
 
     if keyboard_input.pressed(KeyCode::Z) && !editing_state.floors.contains_key(&cursor_position) {

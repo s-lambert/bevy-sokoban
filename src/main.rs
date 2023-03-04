@@ -41,7 +41,11 @@ impl Position {
     }
 
     fn to_translation(self) -> Vec3 {
-        Vec3::new(self.x as f32 * TILE_SIZE, self.y as f32 * -TILE_SIZE, 1.0)
+        self.to_translation_z(1.0)
+    }
+
+    fn to_translation_z(self, z: f32) -> Vec3 {
+        Vec3::new(self.x as f32 * TILE_SIZE, self.y as f32 * -TILE_SIZE, z)
     }
 }
 
@@ -250,8 +254,7 @@ fn level_setup(
     }
 
     for floor_position in get_floor_positions(player_position.unwrap(), obstacles.clone()) {
-        let mut floor_translation = floor_position.to_translation();
-        floor_translation.z = 0.0;
+        let floor_translation = floor_position.to_translation_z(0.0);
 
         commands.spawn(SpriteBundle {
             sprite: Sprite {
