@@ -54,6 +54,11 @@ struct LevelState {
     player_position: Position,
 }
 
+#[derive(Resource, Default)]
+struct EditingState {
+    floors: HashMap<Position, Entity>,
+}
+
 #[derive(Resource, Deref, DerefMut)]
 struct UndoStack(Vec<LevelState>);
 
@@ -520,6 +525,8 @@ fn show_cursor(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         },
     ));
+
+    commands.insert_resource(EditingState::default());
 }
 
 fn handle_edit_input(
@@ -527,6 +534,7 @@ fn handle_edit_input(
     asset_server: Res<AssetServer>,
     time: Res<Time>,
     keyboard_input: Res<Input<KeyCode>>,
+    mut editing_state: ResMut<EditingState>,
     mut cursor_query: Query<(&mut Cursor, &mut Transform)>,
 ) {
     let Some((mut cursor, mut transform)) = cursor_query.iter_mut().next() else { return };
@@ -555,21 +563,32 @@ fn handle_edit_input(
             .to_translation();
     }
 
-    if keyboard_input.pressed(KeyCode::Z) {
+    if keyboard_input.pressed(KeyCode::Z)
+        && !editing_state
+            .floors
+            .contains_key(&Position::from_translation(transform.translation))
+    {
+        dbg!("Added floor tile");
         cursor.action_timer.reset();
 
-        let mut floor_position = transform.translation.clone();
-        floor_position.z = 0.0;
+        let mut floor_translation = transform.translation.clone();
+        floor_translation.z = 0.0;
 
-        commands.spawn(SpriteBundle {
-            sprite: Sprite {
-                anchor: Anchor::TopLeft,
+        let floor_entity = commands
+            .spawn(SpriteBundle {
+                sprite: Sprite {
+                    anchor: Anchor::TopLeft,
+                    ..default()
+                },
+                texture: asset_server.load("floor.png"),
+                transform: Transform::from_translation(floor_translation),
                 ..default()
-            },
-            texture: asset_server.load("floor.png"),
-            transform: Transform::from_translation(floor_position),
-            ..default()
-        });
+            })
+            .id();
+
+        editing_state
+            .floors
+            .insert(Position::from_translation(floor_translation), floor_entity);
     }
 }
 
