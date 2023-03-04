@@ -11,6 +11,12 @@ struct EditingState {
     blocks: HashMap<Position, Entity>,
 }
 
+impl EditingState {
+    fn can_place(&self, position: &Position) -> bool {
+        self.floors.contains_key(position) && !self.blocks.contains_key(position)
+    }
+}
+
 #[derive(Component)]
 struct Cursor {
     action_timer: Timer,
@@ -144,9 +150,7 @@ fn handle_edit_input(
                 editing_state.walls.insert(wall_position, wall_id);
             }
         }
-    } else if keyboard_input.pressed(KeyCode::C)
-        && editing_state.floors.contains_key(&cursor_position)
-    {
+    } else if keyboard_input.pressed(KeyCode::C) && editing_state.can_place(&cursor_position) {
         cursor.action_timer.reset();
 
         let block_translation = cursor_position.to_translation();
