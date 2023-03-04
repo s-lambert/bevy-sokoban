@@ -271,8 +271,8 @@ fn level_setup(
         }
     }
 
-    for tile_position in get_floor_positions(player_position.unwrap(), obstacles.clone()) {
-        let mut translation = tile_position.to_translation();
+    for floor_position in get_floor_positions(player_position.unwrap(), obstacles.clone()) {
+        let mut translation = floor_position.to_translation();
         translation.z = 0.0;
 
         commands.spawn(SpriteBundle {
@@ -558,8 +558,8 @@ fn handle_edit_input(
     if keyboard_input.pressed(KeyCode::Z) {
         cursor.action_timer.reset();
 
-        let mut tile_position = transform.translation.clone();
-        tile_position.z = 0.0;
+        let mut floor_position = transform.translation.clone();
+        floor_position.z = 0.0;
 
         commands.spawn(SpriteBundle {
             sprite: Sprite {
@@ -567,7 +567,7 @@ fn handle_edit_input(
                 ..default()
             },
             texture: asset_server.load("floor.png"),
-            transform: Transform::from_translation(tile_position),
+            transform: Transform::from_translation(floor_position),
             ..default()
         });
     }
