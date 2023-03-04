@@ -9,11 +9,14 @@ struct EditingState {
     floors: HashMap<Position, Entity>,
     walls: HashMap<Position, Entity>,
     blocks: HashMap<Position, Entity>,
+    goals: HashMap<Position, Entity>,
 }
 
 impl EditingState {
     fn can_place(&self, position: &Position) -> bool {
-        self.floors.contains_key(position) && !self.blocks.contains_key(position)
+        self.floors.contains_key(position)
+            && !self.blocks.contains_key(position)
+            && !self.goals.contains_key(position)
     }
 }
 
@@ -109,9 +112,7 @@ fn handle_edit_input(
             })
             .id();
 
-        editing_state
-            .floors
-            .insert(Position::from_translation(floor_translation), floor_entity);
+        editing_state.floors.insert(cursor_position, floor_entity);
 
         if let Some(wall_entity) = editing_state.walls.get(&cursor_position) {
             commands.entity(*wall_entity).despawn();
@@ -165,6 +166,23 @@ fn handle_edit_input(
             })
             .id();
         editing_state.blocks.insert(cursor_position, block_id);
+    } else if keyboard_input.pressed(KeyCode::V) && editing_state.can_place(&cursor_position) {
+        cursor.action_timer.reset();
+
+        let goal_translation = cursor_position.to_translation();
+
+        let goal_id = commands
+            .spawn(SpriteBundle {
+                sprite: Sprite {
+                    anchor: Anchor::TopLeft,
+                    ..default()
+                },
+                texture: asset_server.load("goal.png"),
+                transform: Transform::from_translation(goal_translation),
+                ..default()
+            })
+            .id();
+        editing_state.goals.insert(cursor_position, goal_id);
     }
 }
 
