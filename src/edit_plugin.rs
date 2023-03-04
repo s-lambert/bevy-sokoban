@@ -41,6 +41,7 @@ fn show_cursor(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ..default()
             },
             texture: asset_server.load("cursor.png"),
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 2.0)),
             ..default()
         },
     ));
@@ -80,6 +81,7 @@ fn handle_edit_input(
         transform.translation = Position::from_translation(transform.translation)
             .add(move_x, move_y)
             .to_translation();
+        transform.translation.z = 2.0;
     }
 
     if keyboard_input.pressed(KeyCode::Z)
