@@ -207,7 +207,7 @@ fn handle_edit_input(
     } else if keyboard_input.pressed(KeyCode::V) && editing_state.can_place(&cursor_position) {
         cursor.action_timer.reset();
 
-        let goal_translation = cursor_position.to_translation();
+        let goal_translation = cursor_position.to_translation_z(0.5);
 
         let goal_id = commands
             .spawn(SpriteBundle {

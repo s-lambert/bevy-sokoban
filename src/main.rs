@@ -234,7 +234,7 @@ fn level_setup(
                                 ..default()
                             },
                             texture: goal_texture.clone(),
-                            transform: Transform::from_translation(position.to_translation()),
+                            transform: Transform::from_translation(position.to_translation_z(0.5)),
                             ..default()
                         })
                         .id();
