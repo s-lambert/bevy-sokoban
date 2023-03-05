@@ -20,6 +20,37 @@ impl EditingState {
             && !self.goals.contains_key(position)
             && (self.player.is_none() || &self.player.unwrap().0 != position)
     }
+
+    fn serialize(&self) -> Vec<Vec<i32>> {
+        let wall_positions = self.walls.keys();
+        let min_x = wall_positions.clone().map(|p| p.x).min().unwrap();
+        let max_x = wall_positions.clone().map(|p| p.x).max().unwrap();
+        let min_y = wall_positions.clone().map(|p| p.y).min().unwrap();
+        let max_y = wall_positions.clone().map(|p| p.y).max().unwrap();
+
+        let mut level = vec![
+            vec![0; (1 + max_x - min_x).try_into().unwrap()];
+            (1 + max_y - min_y).try_into().unwrap()
+        ];
+
+        for wall_position in wall_positions {
+            level[(wall_position.y - min_y) as usize][(wall_position.x - min_x) as usize] = 8;
+        }
+
+        for goal_position in self.goals.keys() {
+            level[(goal_position.y - min_y) as usize][(goal_position.x - min_x) as usize] = 4;
+        }
+
+        for block_position in self.blocks.keys() {
+            level[(block_position.y - min_y) as usize][(block_position.x - min_x) as usize] = 2;
+        }
+
+        if let Some((player_position, _)) = self.player {
+            level[(player_position.y - min_y) as usize][(player_position.x - min_x) as usize] = 1;
+        }
+
+        level
+    }
 }
 
 #[derive(Component)]
@@ -71,6 +102,10 @@ fn handle_edit_input(
     mut cursor_query: Query<(&mut Cursor, &mut Transform)>,
 ) {
     let Some((mut cursor, mut transform)) = cursor_query.iter_mut().next() else { return };
+
+    if keyboard_input.pressed(KeyCode::E) {
+        dbg!(editing_state.serialize());
+    }
 
     if !cursor.action_timer.finished() {
         cursor.action_timer.tick(time.delta());

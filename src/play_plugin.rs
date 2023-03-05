@@ -1,4 +1,4 @@
-use crate::{level_setup, level_three, level_two, GameState, Obstacle, Position};
+use crate::{level_four, level_setup, level_three, level_two, GameState, Obstacle, Position};
 use bevy::{prelude::*, utils::HashMap};
 
 pub struct PlayPlugin;
@@ -181,6 +181,7 @@ fn load_next_level(
     let next_level_layout = match next_level.0 {
         2 => level_two(),
         3 => level_three(),
+        4 => level_four(),
         _ => panic!("Level not found"),
     };
     level_setup(commands, asset_server, next_level.0, next_level_layout);

@@ -19,7 +19,7 @@ pub enum GameState {
 
 pub const TILE_SIZE: f32 = 16.0;
 
-#[derive(Component, Copy, Clone, Eq, Hash, PartialEq)]
+#[derive(Component, Copy, Clone, Eq, Hash, PartialEq, Debug)]
 pub struct Position {
     x: i32,
     y: i32,
@@ -84,6 +84,17 @@ pub fn level_three() -> Vec<Vec<i32>> {
         vec![8, 2, 0, 0, 0, 0, 0, 0, 0, 0, 8],
         vec![8, 8, 0, 0, 0, 0, 0, 0, 0, 8, 8],
         vec![0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0],
+    ]
+}
+
+pub fn level_four() -> Vec<Vec<i32>> {
+    vec![
+        vec![8, 8, 8, 0, 0],
+        vec![8, 1, 8, 8, 0],
+        vec![8, 4, 0, 8, 8],
+        vec![8, 2, 0, 0, 8],
+        vec![8, 0, 0, 0, 8],
+        vec![8, 8, 8, 8, 8],
     ]
 }
 
