@@ -1,6 +1,6 @@
 use bevy::{prelude::*, sprite::Anchor, utils::HashMap};
 
-use crate::{GameState, Position, TILE_SIZE};
+use crate::{tiles::spawn_floor, GameState, Position, TILE_SIZE};
 
 pub struct EditPlugin;
 
@@ -135,19 +135,8 @@ fn handle_edit_input(
     if keyboard_input.pressed(KeyCode::Z) && !editing_state.floors.contains_key(&cursor_position) {
         cursor.action_timer.reset();
 
-        let mut floor_translation = transform.translation.clone();
-        floor_translation.z = 0.0;
-
         let floor_entity = commands
-            .spawn(SpriteBundle {
-                sprite: Sprite {
-                    anchor: Anchor::TopLeft,
-                    ..default()
-                },
-                texture: asset_server.load("floor.png"),
-                transform: Transform::from_translation(floor_translation),
-                ..default()
-            })
+            .spawn(spawn_floor(&asset_server, cursor_position))
             .id();
 
         editing_state.floors.insert(cursor_position, floor_entity);

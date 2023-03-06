@@ -1,5 +1,6 @@
 mod edit_plugin;
 mod play_plugin;
+mod tiles;
 
 use bevy::{
     prelude::*,
@@ -8,6 +9,7 @@ use bevy::{
 };
 use edit_plugin::EditPlugin;
 use play_plugin::{LevelState, PlayPlugin, Player, UndoStack};
+use tiles::spawn_floor;
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum GameState {
@@ -164,7 +166,6 @@ fn level_setup(
     let mut goals = HashMap::default();
     let mut player_position = None;
 
-    let floor_texture: Handle<Image> = asset_server.load("floor.png");
     let wall_texture: Handle<Image> = asset_server.load("wall.png");
     let goal_texture: Handle<Image> = asset_server.load("goal.png");
     let block_texture: Handle<Image> = asset_server.load("block.png");
@@ -265,17 +266,7 @@ fn level_setup(
     }
 
     for floor_position in get_floor_positions(player_position.unwrap(), obstacles.clone()) {
-        let floor_translation = floor_position.to_translation_z(0.0);
-
-        commands.spawn(SpriteBundle {
-            sprite: Sprite {
-                anchor: Anchor::TopLeft,
-                ..default()
-            },
-            texture: floor_texture.clone(),
-            transform: Transform::from_translation(floor_translation),
-            ..default()
-        });
+        commands.spawn(spawn_floor(&asset_server, floor_position));
     }
 
     commands.insert_resource(LevelState {
