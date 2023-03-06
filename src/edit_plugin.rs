@@ -187,7 +187,7 @@ fn handle_edit_input(
                 editing_state.walls.insert(wall_position, wall_id);
             }
         }
-    } else if keyboard_input.pressed(KeyCode::C) && editing_state.can_place(&cursor_position) {
+    } else if keyboard_input.pressed(KeyCode::X) && editing_state.can_place(&cursor_position) {
         cursor.action_timer.reset();
 
         let block_translation = cursor_position.to_translation();
@@ -204,7 +204,7 @@ fn handle_edit_input(
             })
             .id();
         editing_state.blocks.insert(cursor_position, block_id);
-    } else if keyboard_input.pressed(KeyCode::V) && editing_state.can_place(&cursor_position) {
+    } else if keyboard_input.pressed(KeyCode::C) && editing_state.can_place(&cursor_position) {
         cursor.action_timer.reset();
 
         let goal_translation = cursor_position.to_translation_z(0.5);
@@ -221,7 +221,7 @@ fn handle_edit_input(
             })
             .id();
         editing_state.goals.insert(cursor_position, goal_id);
-    } else if keyboard_input.pressed(KeyCode::B) && editing_state.can_place(&cursor_position) {
+    } else if keyboard_input.pressed(KeyCode::V) && editing_state.can_place(&cursor_position) {
         cursor.action_timer.reset();
 
         let player_translation = cursor_position.to_translation();
