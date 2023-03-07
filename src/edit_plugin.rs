@@ -21,6 +21,20 @@ impl EditingState {
             && (self.player.is_none() || &self.player.unwrap().0 != position)
     }
 
+    fn remove_object(&mut self, position: &Position) -> Option<Entity> {
+        if self.blocks.contains_key(position) {
+            return self.blocks.remove(position);
+        } else if self.goals.contains_key(position) {
+            return self.goals.remove(position);
+        } else if self.player.is_some() && self.player.unwrap().0 == *position {
+            let player_id = self.player.unwrap().1;
+            self.player = None;
+            return Some(player_id);
+        } else {
+            return None;
+        }
+    }
+
     fn serialize(&self) -> Vec<Vec<i32>> {
         let wall_positions = self.walls.keys();
         let min_x = wall_positions.clone().map(|p| p.x).min().unwrap();
@@ -231,6 +245,10 @@ fn handle_edit_input(
             commands.entity(editing_state.player.unwrap().1).despawn();
         }
         editing_state.player = Some((cursor_position, player_id));
+    } else if keyboard_input.pressed(KeyCode::S) {
+        let Some(removed_entity) = editing_state.remove_object(&cursor_position) else { return };
+
+        commands.entity(removed_entity).despawn();
     }
 }
 
