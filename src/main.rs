@@ -8,7 +8,7 @@ use bevy::{
     utils::{HashMap, HashSet},
 };
 use edit_plugin::EditPlugin;
-use play_plugin::{LevelState, PlayPlugin, Player, UndoStack};
+use play_plugin::{LevelState, NextLevelEvent, PlayPlugin, Player, UndoStack};
 use tiles::spawn_floor;
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
@@ -278,13 +278,11 @@ fn level_setup(
     commands.insert_resource(UndoStack(Vec::default()));
 }
 
-fn setup_level_one(commands: Commands, asset_server: Res<AssetServer>) {
-    let level = level_one();
-
-    level_setup(commands, asset_server, 1, level);
-}
-
-fn start_playing(mut game_state: ResMut<State<GameState>>) {
+fn start_playing(
+    mut next_level_writer: EventWriter<NextLevelEvent>,
+    mut game_state: ResMut<State<GameState>>,
+) {
+    next_level_writer.send(NextLevelEvent(1));
     game_state.replace(GameState::Playing).ok();
 }
 
@@ -315,7 +313,6 @@ fn main() {
         )
         .add_system(bevy::window::close_on_esc)
         .add_state(GameState::Startup)
-        .add_system_set(SystemSet::on_enter(GameState::Startup).with_system(setup_level_one))
         .add_system_set(SystemSet::on_update(GameState::Startup).with_system(start_playing))
         .add_system_set(SystemSet::on_update(GameState::Paused).with_system(unpause_game))
         .add_plugin(PlayPlugin)

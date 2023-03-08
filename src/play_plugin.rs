@@ -1,4 +1,6 @@
-use crate::{level_four, level_setup, level_three, level_two, GameState, Obstacle, Position};
+use crate::{
+    level_four, level_one, level_setup, level_three, level_two, GameState, Obstacle, Position,
+};
 use bevy::{prelude::*, utils::HashMap};
 
 pub struct PlayPlugin;
@@ -11,12 +13,24 @@ pub struct LevelState {
     pub player_position: Position,
 }
 
-#[derive(Resource, Deref, DerefMut)]
+// Remove default implementation and use resource_exists run condition
+impl Default for LevelState {
+    fn default() -> Self {
+        Self {
+            current_level: Default::default(),
+            obstacles: Default::default(),
+            goals: Default::default(),
+            player_position: Position { x: 0, y: 0 },
+        }
+    }
+}
+
+#[derive(Resource, Deref, DerefMut, Default)]
 pub struct UndoStack(pub Vec<LevelState>);
 
 struct UndoEvent;
 
-struct NextLevelEvent(i32);
+pub struct NextLevelEvent(pub i32);
 
 #[derive(Component)]
 pub struct Player {
@@ -179,6 +193,7 @@ fn load_next_level(
     }
 
     let next_level_layout = match next_level.0 {
+        1 => level_one(),
         2 => level_two(),
         3 => level_three(),
         4 => level_four(),
@@ -205,6 +220,8 @@ impl Plugin for PlayPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<UndoEvent>()
             .add_event::<NextLevelEvent>()
+            .insert_resource(LevelState::default())
+            .insert_resource(UndoStack::default())
             .add_system_set(
                 SystemSet::on_update(GameState::Playing)
                     .with_system(pause_game)
