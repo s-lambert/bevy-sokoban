@@ -6,13 +6,15 @@ use bevy::{
     prelude::*,
     sprite::Anchor,
     utils::{HashMap, HashSet},
+    window::WindowResolution,
 };
 use edit_plugin::EditPlugin;
 use play_plugin::{LevelState, NextLevelEvent, PlayPlugin, Player, UndoStack};
 use tiles::spawn_floor;
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(States, Default, Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum GameState {
+    #[default]
     Startup,
     Playing,
     Editing,
@@ -280,19 +282,19 @@ fn level_setup(
 
 fn start_playing(
     mut next_level_writer: EventWriter<NextLevelEvent>,
-    mut game_state: ResMut<State<GameState>>,
+    mut game_state: ResMut<NextState<GameState>>,
 ) {
     next_level_writer.send(NextLevelEvent(1));
-    game_state.replace(GameState::Playing).ok();
+    game_state.set(GameState::Playing);
 }
 
 fn unpause_game(
     mut keyboard_input: ResMut<Input<KeyCode>>,
-    mut game_state: ResMut<State<GameState>>,
+    mut game_state: ResMut<NextState<GameState>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         keyboard_input.reset(KeyCode::Space);
-        game_state.replace(GameState::Playing).ok();
+        game_state.set(GameState::Playing);
     }
 }
 
@@ -302,19 +304,18 @@ fn main() {
             DefaultPlugins
                 .set(ImagePlugin::default_nearest())
                 .set(WindowPlugin {
-                    window: WindowDescriptor {
+                    primary_window: Some(Window {
                         title: "Sokoban!".to_string(),
-                        width: 500.0,
-                        height: 500.0,
+                        resolution: WindowResolution::new(500.0, 500.0),
                         ..default()
-                    },
+                    }),
                     ..default()
                 }),
         )
         .add_system(bevy::window::close_on_esc)
-        .add_state(GameState::Startup)
-        .add_system_set(SystemSet::on_update(GameState::Startup).with_system(start_playing))
-        .add_system_set(SystemSet::on_update(GameState::Paused).with_system(unpause_game))
+        .add_state::<GameState>()
+        .add_system(start_playing.in_set(OnUpdate(GameState::Startup)))
+        .add_system(unpause_game.in_set(OnUpdate(GameState::Paused)))
         .add_plugin(PlayPlugin)
         .add_plugin(EditPlugin)
         .run();

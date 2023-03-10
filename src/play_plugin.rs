@@ -183,12 +183,12 @@ fn move_objects(
 
 fn load_next_level(
     mut commands: Commands,
-    everything_query: Query<Entity>,
+    almost_everything_query: Query<Entity, Without<Window>>,
     asset_server: Res<AssetServer>,
     mut next_level_reader: EventReader<NextLevelEvent>,
 ) {
     let Some(next_level) = next_level_reader.iter().next() else { return };
-    for entity in everything_query.iter() {
+    for entity in almost_everything_query.iter() {
         commands.entity(entity).despawn();
     }
 
@@ -204,15 +204,15 @@ fn load_next_level(
 
 fn pause_game(
     mut keyboard_input: ResMut<Input<KeyCode>>,
-    mut game_state: ResMut<State<GameState>>,
+    mut game_state: ResMut<NextState<GameState>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         keyboard_input.reset(KeyCode::Space);
-        game_state.replace(GameState::Paused).ok();
+        game_state.set(GameState::Paused);
         return;
     } else if keyboard_input.just_pressed(KeyCode::E) {
         keyboard_input.reset(KeyCode::E);
-        game_state.replace(GameState::Editing).ok();
+        game_state.set(GameState::Editing);
     }
 }
 
@@ -222,13 +222,15 @@ impl Plugin for PlayPlugin {
             .add_event::<NextLevelEvent>()
             .insert_resource(LevelState::default())
             .insert_resource(UndoStack::default())
-            .add_system_set(
-                SystemSet::on_update(GameState::Playing)
-                    .with_system(pause_game)
-                    .with_system(handle_input.after(pause_game))
-                    .with_system(reset_state.after(handle_input))
-                    .with_system(move_objects.after(handle_input))
-                    .with_system(load_next_level.after(move_objects)),
+            .add_systems(
+                (
+                    pause_game,
+                    handle_input.after(pause_game),
+                    reset_state.after(handle_input),
+                    move_objects.after(handle_input),
+                    load_next_level.after(move_objects),
+                )
+                    .in_set(OnUpdate(GameState::Playing)),
             );
     }
 }

@@ -72,8 +72,8 @@ struct Cursor {
     action_timer: Timer,
 }
 
-fn remove_level(mut commands: Commands, everything_query: Query<Entity>) {
-    for entity in everything_query.iter() {
+fn remove_level(mut commands: Commands, almost_everything_query: Query<Entity, Without<Window>>) {
+    for entity in almost_everything_query.iter() {
         commands.entity(entity).despawn();
     }
 }
@@ -254,11 +254,7 @@ fn handle_edit_input(
 
 impl Plugin for EditPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(
-            SystemSet::on_enter(GameState::Editing)
-                .with_system(remove_level)
-                .with_system(show_cursor),
-        )
-        .add_system_set(SystemSet::on_update(GameState::Editing).with_system(handle_edit_input));
+        app.add_systems((remove_level, show_cursor).in_schedule(OnEnter(GameState::Editing)))
+            .add_system(handle_edit_input.in_set(OnUpdate(GameState::Editing)));
     }
 }
