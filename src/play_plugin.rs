@@ -28,8 +28,10 @@ impl Default for LevelState {
 #[derive(Resource, Deref, DerefMut, Default)]
 pub struct UndoStack(pub Vec<LevelState>);
 
+#[derive(Event)]
 struct UndoEvent;
 
+#[derive(Event)]
 pub struct NextLevelEvent(pub i32);
 
 #[derive(Component)]
@@ -51,7 +53,9 @@ fn handle_input(
     level_state: Res<LevelState>,
     mut player_query: Query<(Entity, &mut Player)>,
 ) {
-    let Some((player_entity, mut player)) = player_query.iter_mut().next() else { return };
+    let Some((player_entity, mut player)) = player_query.iter_mut().next() else {
+        return;
+    };
     if player.is_moving {
         return;
     }
@@ -72,7 +76,9 @@ fn handle_input(
         movement = Some((1, 0));
     }
 
-    let Some((move_x, move_y)) = movement else { return };
+    let Some((move_x, move_y)) = movement else {
+        return;
+    };
     let move_to = level_state.player_position.add(move_x, move_y);
 
     match level_state.obstacles.get(&move_to) {
@@ -105,16 +111,24 @@ fn reset_state(
     mut transform_query: Query<&mut Transform>,
 ) {
     if undo_reader.iter().next().is_some() {
-        let Some(previous_state) = undo_stack.pop() else { return };
+        let Some(previous_state) = undo_stack.pop() else {
+            return;
+        };
         *level_state = previous_state;
 
-        let Some(player_entity) = player_query.iter().next() else { return };
-        let Ok(mut player_transform) = transform_query.get_mut(player_entity) else { return };
+        let Some(player_entity) = player_query.iter().next() else {
+            return;
+        };
+        let Ok(mut player_transform) = transform_query.get_mut(player_entity) else {
+            return;
+        };
         player_transform.translation = level_state.player_position.to_translation();
 
         for (position, (obstacle_entity, obstacle)) in level_state.obstacles.iter() {
             let Obstacle::Block = obstacle else { continue };
-            let Ok(mut block_transform) = transform_query.get_mut(*obstacle_entity) else { continue };
+            let Ok(mut block_transform) = transform_query.get_mut(*obstacle_entity) else {
+                continue;
+            };
             block_transform.translation = position.to_translation();
         }
     }
@@ -142,7 +156,9 @@ fn move_objects(
     mut moving_query: Query<(Entity, &Moving, &mut Transform)>,
     mut next_level_writer: EventWriter<NextLevelEvent>,
 ) {
-    let Some((player_entity, mut player)) = player_query.iter_mut().next() else { return };
+    let Some((player_entity, mut player)) = player_query.iter_mut().next() else {
+        return;
+    };
     if !player.is_moving {
         return;
     }
@@ -167,7 +183,9 @@ fn move_objects(
                 level_state.player_position = moving.to;
             }
 
-            let Some(obstacle) = level_state.obstacles.remove(&moving.from) else { continue };
+            let Some(obstacle) = level_state.obstacles.remove(&moving.from) else {
+                continue;
+            };
             level_state.obstacles.insert(moving.to, obstacle);
         }
 
@@ -187,7 +205,9 @@ fn load_next_level(
     asset_server: Res<AssetServer>,
     mut next_level_reader: EventReader<NextLevelEvent>,
 ) {
-    let Some(next_level) = next_level_reader.iter().next() else { return };
+    let Some(next_level) = next_level_reader.iter().next() else {
+        return;
+    };
     for entity in almost_everything_query.iter() {
         commands.entity(entity).despawn();
     }
@@ -223,6 +243,7 @@ impl Plugin for PlayPlugin {
             .insert_resource(LevelState::default())
             .insert_resource(UndoStack::default())
             .add_systems(
+                Update,
                 (
                     pause_game,
                     handle_input.after(pause_game),
@@ -230,7 +251,7 @@ impl Plugin for PlayPlugin {
                     move_objects.after(handle_input),
                     load_next_level.after(move_objects),
                 )
-                    .in_set(OnUpdate(GameState::Playing)),
+                    .run_if(in_state(GameState::Playing)),
             );
     }
 }

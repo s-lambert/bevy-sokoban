@@ -312,11 +312,11 @@ fn main() {
                     ..default()
                 }),
         )
-        .add_system(bevy::window::close_on_esc)
+        .add_systems(Update, bevy::window::close_on_esc)
         .add_state::<GameState>()
-        .add_system(start_playing.in_set(OnUpdate(GameState::Startup)))
-        .add_system(unpause_game.in_set(OnUpdate(GameState::Paused)))
-        .add_plugin(PlayPlugin)
-        .add_plugin(EditPlugin)
+        .add_systems(Update, start_playing.run_if(in_state(GameState::Startup)))
+        .add_systems(Update, unpause_game.run_if(in_state(GameState::Paused)))
+        .add_plugins(PlayPlugin)
+        .add_plugins(EditPlugin)
         .run();
 }

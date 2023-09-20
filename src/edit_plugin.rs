@@ -115,7 +115,9 @@ fn handle_edit_input(
     mut editing_state: ResMut<EditingState>,
     mut cursor_query: Query<(&mut Cursor, &mut Transform)>,
 ) {
-    let Some((mut cursor, mut transform)) = cursor_query.iter_mut().next() else { return };
+    let Some((mut cursor, mut transform)) = cursor_query.iter_mut().next() else {
+        return;
+    };
 
     if keyboard_input.pressed(KeyCode::E) {
         dbg!(editing_state.serialize());
@@ -246,7 +248,9 @@ fn handle_edit_input(
         }
         editing_state.player = Some((cursor_position, player_id));
     } else if keyboard_input.pressed(KeyCode::S) {
-        let Some(removed_entity) = editing_state.remove_object(&cursor_position) else { return };
+        let Some(removed_entity) = editing_state.remove_object(&cursor_position) else {
+            return;
+        };
 
         commands.entity(removed_entity).despawn();
     }
@@ -254,7 +258,10 @@ fn handle_edit_input(
 
 impl Plugin for EditPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((remove_level, show_cursor).in_schedule(OnEnter(GameState::Editing)))
-            .add_system(handle_edit_input.in_set(OnUpdate(GameState::Editing)));
+        app.add_systems(OnEnter(GameState::Editing), (remove_level, show_cursor))
+            .add_systems(
+                Update,
+                handle_edit_input.run_if(in_state(GameState::Editing)),
+            );
     }
 }
