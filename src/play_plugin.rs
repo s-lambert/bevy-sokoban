@@ -110,7 +110,7 @@ fn reset_state(
     player_query: Query<Entity, With<Player>>,
     mut transform_query: Query<&mut Transform>,
 ) {
-    if undo_reader.iter().next().is_some() {
+    if undo_reader.read().next().is_some() {
         let Some(previous_state) = undo_stack.pop() else {
             return;
         };
@@ -205,7 +205,7 @@ fn load_next_level(
     asset_server: Res<AssetServer>,
     mut next_level_reader: EventReader<NextLevelEvent>,
 ) {
-    let Some(next_level) = next_level_reader.iter().next() else {
+    let Some(next_level) = next_level_reader.read().next() else {
         return;
     };
     for entity in almost_everything_query.iter() {
